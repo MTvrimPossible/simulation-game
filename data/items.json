@@ -1,0 +1,166 @@
+{
+  "item_001_water": {
+    "name": "Bottled Water",
+    "ascii_tile": "~",
+    "type": "Held",
+    "owner": "Public",
+    "isStolen": false,
+    "OnUse": {
+      "effect": "SatisfyNeed",
+      "need": "Dr",
+      "amount": 50,
+      "addMicroplastics": 5
+    }
+  },
+  "item_002_sink": {
+    "name": "Sink",
+    "ascii_tile": "S",
+    "type": "In-World",
+    "owner": "Public",
+    "isStolen": false,
+    "Interaction": {
+      "actionName": "Get Water",
+      "effect": "SatisfyNeed",
+      "need": "Dr",
+      "amount": 20,
+      "addMicroplastics": 1
+    }
+  },
+  "item_003_fridge": {
+    "name": "Refrigerator",
+    "ascii_tile": "[",
+    "type": "In-World",
+    "owner": "Public",
+    "isStolen": false,
+    "Interaction": {
+      "actionName": "Scavenge Food",
+      "effect": "SpawnItem",
+      "target": "Inventory",
+      "possible_items": ["item_005_sandwich", "item_006_soda"]
+    }
+  },
+  "item_004_dsm": {
+    "name": "DSM",
+    "ascii_tile": "B",
+    "type": "Held",
+    "owner": "Public",
+    "isStolen": false,
+    "OnUse": null,
+    "isKeyItem": true
+  },
+  "item_005_sandwich": {
+    "name": "Stale Sandwich",
+    "ascii_tile": "%",
+    "type": "Held",
+    "owner": "Public",
+    "isStolen": false,
+    "OnUse": {
+      "effect": "SatisfyNeed",
+      "need": "Ea",
+      "amount": 40
+    }
+  },
+  "item_006_soda": {
+    "name": "Generic Soda",
+    "ascii_tile": "!",
+    "type": "Held",
+    "owner": "Public",
+    "isStolen": false,
+    "OnUse": {
+      "effect": "SatisfyNeed",
+      "need": "Fu",
+      "amount": 15,
+      "addMicroplastics": 8
+    }
+  },
+  "item_007_poem_fragment": {
+    "name": "Torn Poem",
+    "ascii_tile": "p",
+    "type": "Held",
+    "owner": "Public",
+    "isStolen": false,
+    "OnUse": {
+      "effect": "TriggerDialogue",
+      "dialogue_id": "poem_read_001"
+    },
+    "isKeyItem": true
+  },
+  "item_008_radio": {
+    "name": "Old Radio",
+    "ascii_tile": "R",
+    "type": "In-World",
+    "owner": "Public",
+    "isStolen": false,
+    "Interaction": {
+      "actionName": "Listen",
+      "effect": "TriggerEvent",
+      "event_id": "radio_broadcast_daily"
+    }
+  },
+  "item_009_tv": {
+    "name": "CRT Television",
+    "ascii_tile": "T",
+    "type": "In-World",
+    "owner": "Public",
+    "isStolen": false,
+    "Interaction": {
+      "actionName": "Watch",
+      "effect": "SatisfyNeed",
+      "need": "Fu",
+      "amount": 30,
+      "cost_time": 60
+    }
+  },
+  "item_010_home_pc": {
+    "name": "Beige PC",
+    "ascii_tile": "C",
+    "type": "In-World",
+    "owner": "Player",
+    "isStolen": false,
+    "Interaction": {
+      "actionName": "Use Terminal",
+      "effect": "StartMinigame",
+      "minigame_id": "terminal_hacking"
+    }
+  },
+  "item_011_bed": {
+    "name": "Dirty Mattress",
+    "ascii_tile": "=",
+    "type": "In-World",
+    "owner": "Public",
+    "isStolen": false,
+    "Interaction": {
+      "actionName": "Sleep",
+      "effect": "SatisfyNeed",
+      "need": "Sl",
+      "amount": 100,
+      "cost_time": 480
+    }
+  },
+  "item_012_toilet": {
+    "name": "Toilet",
+    "ascii_tile": "U",
+    "type": "In-World",
+    "owner": "Public",
+    "isStolen": false,
+    "Interaction": {
+      "actionName": "Use",
+      "effect": "SatisfyNeed",
+      "need": "Pi",
+      "amount": 100
+    }
+  },
+  "item_013_shower": {
+    "name": "Grimy Shower",
+    "ascii_tile": "|",
+    "type": "In-World",
+    "owner": "Public",
+    "isStolen": false,
+    "Interaction": {
+      "actionName": "Wash",
+      "effect": "SatisfyNeed",
+      "need": "Hy",
+      "amount": 80
+    }
+  }
+}
