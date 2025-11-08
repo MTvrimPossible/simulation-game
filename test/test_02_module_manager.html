@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST 02: Module Manager (Data Loader)</title>
+    <style>
+        body { background-color: #1e1e1e; color: #d4d4d4; font-family: monospace; padding: 20px; }
+        #test-output { background: #252526; padding: 15px; border: 1px solid #3c3c3c; white-space: pre-wrap; }
+        .pass { color: #4caf50; }
+        .fail { color: #f44336; font-weight: bold; }
+        .info { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <h2>TEST 02: Module Manager (Async Data Loader)</h2>
+    <pre id="test-output">Initializing test environment...\n</pre>
+
+    <script>
+        const output = document.getElementById('test-output');
+        window.log = (message, type = '') => {
+            let styleClass = '';
+            if (type === 'pass') styleClass = 'pass';
+            else if (type === 'fail') styleClass = 'fail';
+            else if (type === 'info') styleClass = 'info';
+            const span = document.createElement('span');
+            span.className = styleClass;
+            span.textContent = `> ${message}\n`;
+            output.appendChild(span);
+        };
+        window.assert = (condition, message) => {
+            if (condition) {
+                window.log(`✔ PASS: ${message}`, 'pass');
+                return true;
+            } else {
+                window.log(`✘ FAIL: ${message}`, 'fail');
+                return false;
+            }
+        };
+    </script>
+
+    <script type="module">
+        import { ModuleManager } from '../src/module_manager.js';
+
+        // --- MOCKING INFRASTRUCTURE ---
+        // We save the real fetch just in case, though we won't need it here.
+        const originalFetch = window.fetch;
+
+        // Helper to create a fake network response
+        const mockResponse = (status, data) => {
+            return Promise.resolve({
+                ok: status === 200,
+                status: status,
+                json: () => Promise.resolve(data)
+            });
+        };
+
+        window.log("Starting ModuleManager tests...", 'info');
+
+        async function runTests() {
+            // =========================================
+            // TEST CASE 1: HAPPY PATH (All loads succeed)
+            // =========================================
+            window.log("\n--- TEST CASE 1: Happy Path (Success) ---", 'info');
+
+            // 1. Mock successful network calls
+            window.fetch = (url) => {
+                if (url.includes('items.json')) return mockResponse(200, { "item_001": { "name": "Mock Sword" } });
+                if (url.includes('npcs.json')) return mockResponse(200, { "npc_001": { "name": "Mock Goblin" } });
+                if (url.includes('dialogue.json')) return mockResponse(200, {});
+                return mockResponse(404, {});
+            };
+
+            const manager1 = new ModuleManager();
+
+            try {
+                // 2. Call loadAllData
+                await manager1.loadAllData();
+                // 3. Assertions
+                window.assert(true, "loadAllData() resolved successfully.");
+                window.assert(manager1.items['item_001'] && manager1.items['item_001'].name === "Mock Sword", "Items database populated correctly.");
+                window.assert(manager1.npcs['npc_001'] && manager1.npcs['npc_001'].name === "Mock Goblin", "NPC database populated correctly.");
+            } catch (e) {
+                window.assert(false, `Unexpected error in happy path: ${e.message}`);
+            }
+
+            // =========================================
+            // TEST CASE 2: FAILURE PATH (One file 404s)
+            // =========================================
+            window.log("\n--- TEST CASE 2: Failure Path (Edge Case 404) ---", 'info');
+
+            // 1. Mock a BROKEN network call for NPCs
+            window.fetch = (url) => {
+                 if (url.includes('items.json')) return mockResponse(200, { "item_001": { "name": "Mock Sword" } });
+                 if (url.includes('npcs.json')) return mockResponse(404, {}); // <-- INTENTIONAL FAILURE
+                 if (url.includes('dialogue.json')) return mockResponse(200, {});
+                 return mockResponse(404, {});
+            };
+
+            const manager2 = new ModuleManager();
+            let errorCaught = false;
+
+            try {
+                // 2. Call loadAllData (expecting it to explode)
+                await manager2.loadAllData();
+                window.assert(false, "loadAllData() should have thrown an error but didn't.");
+            } catch (e) {
+                // 3. Assertions
+                errorCaught = true;
+                window.assert(true, `Caught expected error: ${e.message}`);
+            }
+
+            window.assert(errorCaught, "Error was correctly thrown and caught.");
+            // Verify it didn't partially populate critical data on failure
+            // (Depending on race conditions, items MIGHT be populated if it finished first,
+            // but the app as a whole should know it failed because of the catch block above).
+        }
+
+        // Run the async test harness
+        runTests().then(() => {
+             window.log("\nModuleManager tests complete.", 'info');
+             // Restore original fetch to be safe
+             window.fetch = originalFetch;
+        });
+
+    </script>
+</body>
+</html>
