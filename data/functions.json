@@ -1,0 +1,32 @@
+[
+  {
+    "id": "Standoff.001",
+    "triggers": ["OnPlayerEnterLocation:loc_alley"],
+    "conditions": ["WorldState.CrimeRate > 50", "Player.Reputation < 0"],
+    "effects": [
+      "SpawnNPC(npc_gang_member, relative: {x: 5, y: 0})",
+      "SpawnNPC(npc_police, relative: {x: -5, y: 0})",
+      "StartDialogue(D_Standoff_Intro)"
+    ]
+  },
+  {
+    "id": "Event.Lottery",
+    "triggers": ["OnUseItem:item_soda_marked"],
+    "conditions": [],
+    "effects": [
+      "PlaySound(sfx_lottery_win)",
+      "AddCurrency(500)",
+      "UIMessage(You found a winning cap! NUMBER FEVER!)"
+    ]
+  },
+  {
+    "id": "Event.Outbreak",
+    "triggers": ["OnTime:Midnight"],
+    "conditions": ["Random(0.05)"],
+    "effects": [
+      "ApplyContagion(FoodVirus, target:ALL_FOOD_SOURCES)",
+      "UIMessage(RUMOR: Don't eat the diner special today...)",
+      "LogEvent(Outbreak started)"
+    ]
+  }
+]
