@@ -5,21 +5,22 @@ export class MortalitySystem extends System {
         super();
         this.world = world;
         this.legacyManager = legacyManager;
+        this.isDead = false; // Prevent double-death loops
     }
 
     update(world, entities, turns_passed) {
+        if (this.isDead) return;
+
         const player = world.playerEntityId;
+        if (!player) return;
+
         const needs = world.getComponent(player, 'NeedsComponent');
 
         if (needs) {
             if (needs.Ea <= 0 || needs.Dr <= 0) {
-                console.log("[Mortality] Player has died of neglect.");
-                // Trigger Permadeath
+                console.log("[Mortality] Player died of neglect.");
+                this.isDead = true;
                 this.legacyManager.handlePermadeath(world, player);
-                
-                // Stop the game loop (hacky way for now)
-                // In a real engine, we'd have a proper GameStateManager.
-                throw new Error("GAME_OVER"); // Will stop the loop by crashing it safely-ish
             }
         }
     }
