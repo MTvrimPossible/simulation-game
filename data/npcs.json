@@ -1,0 +1,52 @@
+{
+  "strange_walker": {
+    "name": "Strange Walker",
+    "description": "A figure that seems to glitch between standard pedestrian behaviors.",
+    "ascii_tile": "@",
+    "color": "#a0a0a0",
+    "dialogue_tree_id": "D_StrangeWalker",
+    "ai_package": "AI_Wander",
+    "starting_items": ["item_007_poem_fragment"]
+  },
+  "flirty_clerk": {
+    "name": "Flirty Clerk",
+    "description": "Working the night shift. Too cheerful for this hour.",
+    "ascii_tile": "C",
+    "color": "#ff69b4",
+    "dialogue_tree_id": "D_Clerk",
+    "ai_package": "AI_Stationary_Shop",
+    "starting_items": []
+  },
+  "bar_drinker": {
+    "name": "Bar Drinker",
+    "description": "Trying to drown memories that won't stay submerged.",
+    "ascii_tile": "D",
+    "color": "#8b4513",
+    "dialogue_tree_id": "D_Drinker",
+    "ai_package": "AI_Stationary",
+    "needs_component_modifiers": {
+      "Dr_decay": 0.5,
+      "Sl_decay": 0.0
+    }
+  },
+  "crazed_guest": {
+    "name": "Crazed Guest",
+    "description": "Muttering about static and frequencies.",
+    "ascii_tile": "G",
+    "color": "#ffff00",
+    "dialogue_tree_id": "D_Guest",
+    "ai_package": "AI_Erratic",
+    "needs_component_modifiers": {
+      "So_decay": 0.3
+    }
+  },
+  "hostess": {
+    "name": "Radio Hostess",
+    "description": "A soothing voice emanating from a physical form you didn't expect to see.",
+    "ascii_tile": "H",
+    "color": "#00ffff",
+    "dialogue_tree_id": "D_Hostess",
+    "ai_package": "AI_Stationary",
+    "starting_items": ["item_008_radio"]
+  }
+}
