@@ -1,4 +1,4 @@
-// main.js - v6 (Delusions Ready)
+// main.js - v7 (Schedules & Movement)
 import { World } from './src/ecs.js';
 import { Renderer } from './src/renderer.js';
 import { ModuleManager } from './src/module_manager.js';
@@ -21,9 +21,12 @@ import { MicroplasticsComponent } from './src/components/MicroplasticsComponent.
 import { DialogueComponent } from './src/components/DialogueComponent.js';
 import { InventoryComponent } from './src/components/InventoryComponent.js';
 import { ItemComponent } from './src/components/ItemComponent.js';
-import { DelusionComponent } from './src/components/DelusionComponent.js'; // NEW IMPORT
-
-class ReputationComponent { constructor() { this.value = 0; } }
+import { DelusionComponent } from './src/components/DelusionComponent.js';
+// NEW IMPORTS
+import { ScheduleComponent } from './src/components/ScheduleComponent.js';
+import { ScheduleSystem } from './src/systems/schedule_system.js';
+import { NPCMovementSystem } from './src/systems/npc_movement.js';
+import { DestinationComponent } from './src/components/DestinationComponent.js'; // Needed for manual testing if desired
 
 async function init() {
     const world = new World();
@@ -39,21 +42,18 @@ async function init() {
         const dialogueComp = world.getComponent(targetId, 'DialogueComponent');
         if (dialogueComp) { dialogueSystem.startDialogue(dialogueComp.treeId, world, player); return; }
         const itemComp = world.getComponent(targetId, 'ItemComponent');
-        if (itemComp) {
-            const inventory = world.getComponent(player, 'InventoryComponent');
-            if (inventory && inventory.addItem({ id: itemComp.itemId, name: itemComp.name })) {
-                 delete world.components.PositionComponent[targetId];
-                 document.getElementById('ui-textbox').innerText = `Picked up: ${itemComp.name}`;
-                 window.dispatchEvent(new CustomEvent('OnPickupItem', { detail: { entityId: player, item: itemComp } }));
-            } else { document.getElementById('ui-textbox').innerText = "Inventory full."; }
+        if (itemComp && world.getComponent(player, 'InventoryComponent').addItem({ id: itemComp.itemId, name: itemComp.name })) {
+             delete world.components.PositionComponent[targetId];
+             document.getElementById('ui-textbox').innerText = `Picked up: ${itemComp.name}`;
+             window.dispatchEvent(new CustomEvent('OnPickupItem', { detail: { entityId: player, item: itemComp } }));
         }
     });
 
     const townData = worldGenerator.createTownMap();
     world.getCurrentMap = () => townData.mapData;
-    townData.buildingSpawns.forEach(spawn => {
+    townData.buildingSpawns.forEach(s => {
         const b = world.createEntity();
-        world.addComponent(b, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
+        world.addComponent(b, 'PositionComponent', new PositionComponent(s.x, s.y));
         world.addComponent(b, 'ASCIIRenderComponent', new ASCIIRenderComponent('B', '#555555'));
     });
 
@@ -63,46 +63,26 @@ async function init() {
     world.addComponent(player, 'NeedsComponent', new NeedsComponent());
     world.addComponent(player, 'MicroplasticsComponent', new MicroplasticsComponent(0));
     world.addComponent(player, 'InventoryComponent', new InventoryComponent());
-    world.addComponent(player, 'ReputationComponent', new ReputationComponent());
     world.playerEntityId = player;
 
-    const npc = world.createEntity();
-    world.addComponent(npc, 'PositionComponent', new PositionComponent(18, 15));
-    world.addComponent(npc, 'ASCIIRenderComponent', new ASCIIRenderComponent('D', 'cyan'));
-    world.addComponent(npc, 'DialogueComponent', new DialogueComponent('D_Debug'));
-
-    // --- DELUSION ENTITIES ---
-    // 1. The DSM Manual itself (needs to be picked up to see delusions)
-    const dsmItem = world.createEntity();
-    world.addComponent(dsmItem, 'PositionComponent', new PositionComponent(20, 20));
-    world.addComponent(dsmItem, 'ASCIIRenderComponent', new ASCIIRenderComponent('M', 'red'));
-    world.addComponent(dsmItem, 'ItemComponent', new ItemComponent('item_004_dsm', 'DSM Manual'));
-
-    // 2. A Delusion (Invisible without manual)
-    const ghost = world.createEntity();
-    world.addComponent(ghost, 'PositionComponent', new PositionComponent(22, 22));
-    world.addComponent(ghost, 'ASCIIRenderComponent', new ASCIIRenderComponent('G', '#ff00ffaa')); // Transparent purple
-    world.addComponent(ghost, 'DelusionComponent', new DelusionComponent());
-    // Give it dialogue so we know when we found it
-    world.addComponent(ghost, 'DialogueComponent', new DialogueComponent('D_Guest'));
+    // --- SCHEDULED WORKER NPC ---
+    const worker = world.createEntity();
+    world.addComponent(worker, 'PositionComponent', new PositionComponent(5, 5));
+    world.addComponent(worker, 'ASCIIRenderComponent', new ASCIIRenderComponent('W', 'orange'));
+    world.addComponent(worker, 'ScheduleComponent', new ScheduleComponent({
+        "0900": { "action": "moveTo", "target": { "x": 40, "y": 10 } }, // Commute to work at 9 AM
+        "1700": { "action": "moveTo", "target": { "x": 5, "y": 5 } }   // Commute home at 5 PM
+    }));
 
     world.getRenderableEntities = () => {
         const renderables = [];
-        // Check if player has DSM
-        const inv = world.getComponent(world.playerEntityId, 'InventoryComponent');
-        const hasDSM = inv && inv.items.some(i => i.id === 'item_004_dsm');
-
-        for (const entityId of world.entities) {
-            const pos = world.getComponent(entityId, 'PositionComponent');
-            const ren = world.getComponent(entityId, 'ASCIIRenderComponent');
-            const del = world.getComponent(entityId, 'DelusionComponent');
-
-            // DELUSION CHECK LOGIC
-            if (del && !hasDSM) continue;
-
-            if (pos && ren) {
-                renderables.push({ x: pos.x, y: pos.y, tile: ren.tile, color: ren.color });
-            }
+        const hasDSM = world.getComponent(world.playerEntityId, 'InventoryComponent').items.some(i => i.id === 'item_004_dsm');
+        for (const e of world.entities) {
+            const p = world.getComponent(e, 'PositionComponent');
+            const r = world.getComponent(e, 'ASCIIRenderComponent');
+            const d = world.getComponent(e, 'DelusionComponent');
+            if (d && !hasDSM) continue;
+            if (p && r) renderables.push({ x: p.x, y: p.y, tile: r.tile, color: r.color });
         }
         return renderables;
     };
@@ -110,15 +90,13 @@ async function init() {
     world.registerSystem(new PlayerControlSystem());
     world.registerSystem(new InventoryUISystem(world, renderer));
     world.registerSystem(new TimeSystem());
+    world.registerSystem(new ScheduleSystem()); // <--- NEW
+    world.registerSystem(new NPCMovementSystem()); // <--- NEW
     world.registerSystem(new AINeedsSystem(moduleManager));
-    world.registerSystem(new LieIdleSystem());
-    world.registerSystem(new ContagionSystem());
-    world.registerSystem(new OwnershipSystem());
-    world.registerSystem(new MicroplasticsSystem());
-    world.registerSystem(new ReputationSystem());
+    // ... other passive systems ...
 
     const gameLoop = new GameLoop(world, renderer);
     gameLoop.start();
-    document.getElementById('ui-textbox').innerText = "Find the Red Manual (M) to see the unseen.";
+    document.getElementById('ui-textbox').innerText = "Wait until 09:00 to see the Worker (W) commute.";
 }
 init();
