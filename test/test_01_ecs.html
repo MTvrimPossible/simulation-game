@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST 01: ECS Core</title>
+    <style>
+        body { background-color: #1e1e1e; color: #d4d4d4; font-family: monospace; padding: 20px; }
+        #test-output { background: #252526; padding: 15px; border: 1px solid #3c3c3c; white-space: pre-wrap; }
+        .pass { color: #4caf50; }
+        .fail { color: #f44336; font-weight: bold; }
+        .info { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <h2>TEST 01: ECS Core Engine</h2>
+    <pre id="test-output">Initializing test environment...\n</pre>
+
+    <script>
+        const output = document.getElementById('test-output');
+        window.log = (message, type = '') => {
+            let styleClass = '';
+            if (type === 'pass') styleClass = 'pass';
+            else if (type === 'fail') styleClass = 'fail';
+            else if (type === 'info') styleClass = 'info';
+            const span = document.createElement('span');
+            span.className = styleClass;
+            span.textContent = `> ${message}\n`;
+            output.appendChild(span);
+        };
+        window.assert = (condition, message) => {
+            if (condition) {
+                window.log(`✔ PASS: ${message}`, 'pass');
+                return true;
+            } else {
+                window.log(`✘ FAIL: ${message}`, 'fail');
+                return false;
+            }
+        };
+    </script>
+
+    <script type="module">
+        // Import the modules to test. Note the '../' to go up one folder.
+        import { World, System } from '../src/ecs.js';
+
+        window.log("Starting ECS Core tests...", 'info');
+
+        // --- SETUP ---
+        const world = new World();
+        let systemRunCount = 0;
+        let lastProcessedEntities = [];
+
+        // 3. Create a Test System
+        class TestSystem extends System {
+            constructor() {
+                super();
+                // This system ONLY cares about entities with 'TestComponent'
+                this.requiredComponents = ['TestComponent'];
+            }
+
+            update(world, entities, turns_passed) {
+                systemRunCount++;
+                lastProcessedEntities = entities;
+                // Log strictly for debug/visual confirmation if needed
+                // console.log(`System processing ${entities.length} entities.`);
+            }
+        }
+
+        // 4. Register the system
+        world.registerSystem(new TestSystem());
+        window.assert(world.systems.length === 1, "System registered successfully.");
+
+        // --- TEST CASE 1: Entity WITH component ---
+        // 1 & 5. Create entity and add component
+        const e1 = world.createEntity();
+        world.addComponent(e1, 'TestComponent', { value: 'Hello' });
+
+        // 6. Run the loop
+        world.updateSystems(1);
+
+        // 7. Assertions for Case 1
+        window.assert(systemRunCount === 1, "TestSystem.update() was called once.");
+        window.assert(lastProcessedEntities.length === 1, "System received exactly 1 entity.");
+        window.assert(lastProcessedEntities[0] === e1, "System received Entity 1.");
+
+        // --- TEST CASE 2: Entity WITHOUT component ---
+        // 8. Create second entity (empty)
+        const e2 = world.createEntity();
+
+        // 9. Run loop again
+        world.updateSystems(1);
+
+        // 10. Assertions for Case 2
+        window.assert(systemRunCount === 2, "TestSystem.update() was called a second time.");
+        window.assert(lastProcessedEntities.length === 1, "System STILL only received 1 entity (filtered correctly).");
+        window.assert(lastProcessedEntities.includes(e1), "Entity 1 is still being processed.");
+        window.assert(!lastProcessedEntities.includes(e2), "Entity 2 was correctly IGNORED by the system.");
+
+        window.log("ECS Core tests complete.", 'info');
+    </script>
+</body>
+</html>
