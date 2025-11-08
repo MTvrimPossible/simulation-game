@@ -14,36 +14,25 @@
             flex-direction: column;
             height: 100vh;
             box-sizing: border-box;
-            overflow: hidden; /* Prevent body scrolling entirely */
+            overflow: hidden;
         }
         .hidden { display: none !important; }
-
-        /* NEW: Responsive Canvas CSS */
         #minigame-canvas {
             background: #000;
             flex-grow: 1;
-            /* Ensure it scales down if screen is small */
             max-width: 100%;
             max-height: 70vh;
-            object-fit: contain; /* Keep aspect ratio if we set both w/h */
+            object-fit: contain;
             display: block;
-            margin: 0 auto; /* Center it */
+            margin: 0 auto;
         }
     </style>
 </head>
 <body>
-    <div id="stats-bar" style="background: #333; color: white; padding: 5px; font-family: monospace; margin-bottom: 10px;">
-        Initializing stats...
-    </div>
-
+    <div id="stats-bar" style="background: #333; color: white; padding: 5px; font-family: monospace; margin-bottom: 10px;">Initializing...</div>
     <canvas id="minigame-canvas" width="640" height="480" class="hidden"></canvas>
-
     <pre id="game-screen" style="font-family: 'Courier New', monospace; font-size: 16px; flex-grow: 1; overflow: auto; background: #000;"></pre>
-
-    <div id="ui-textbox" style="border-top: 1px solid #e0e0e0; padding: 10px; height: 150px; overflow-y: auto; font-family: sans-serif;">
-        Initializing simulation...
-    </div>
-
+    <div id="ui-textbox" style="border-top: 1px solid #e0e0e0; padding: 10px; height: 150px; overflow-y: auto; font-family: sans-serif;">Loading...</div>
     <script src="main.js" type="module"></script>
 </body>
 </html>
