@@ -1,4 +1,8 @@
-// main.js - v7 (Schedules & Movement)
+/**
+ * main.js
+ * THE INTEGRATOR - v8 Zoned City
+ */
+
 import { World } from './src/ecs.js';
 import { Renderer } from './src/renderer.js';
 import { ModuleManager } from './src/module_manager.js';
@@ -12,6 +16,8 @@ import { OwnershipSystem } from './src/systems/ownership.js';
 import { MicroplasticsSystem } from './src/systems/entropy.js';
 import { ReputationSystem } from './src/systems/reputation.js';
 import { InventoryUISystem } from './src/systems/inventory_ui.js';
+import { ScheduleSystem } from './src/systems/schedule_system.js';
+import { NPCMovementSystem } from './src/systems/npc_movement.js';
 import { WorldGenerator } from './src/procgen/world_generator.js';
 import { DialogueSystem } from './src/dialogue_system.js';
 import { PositionComponent } from './src/components/PositionComponent.js';
@@ -22,11 +28,10 @@ import { DialogueComponent } from './src/components/DialogueComponent.js';
 import { InventoryComponent } from './src/components/InventoryComponent.js';
 import { ItemComponent } from './src/components/ItemComponent.js';
 import { DelusionComponent } from './src/components/DelusionComponent.js';
-// NEW IMPORTS
 import { ScheduleComponent } from './src/components/ScheduleComponent.js';
-import { ScheduleSystem } from './src/systems/schedule_system.js';
-import { NPCMovementSystem } from './src/systems/npc_movement.js';
-import { DestinationComponent } from './src/components/DestinationComponent.js'; // Needed for manual testing if desired
+import { DestinationComponent } from './src/components/DestinationComponent.js';
+
+class ReputationComponent { constructor() { this.value = 0; } }
 
 async function init() {
     const world = new World();
@@ -49,29 +54,44 @@ async function init() {
         }
     });
 
+    // --- WORLD GEN (UPDATED) ---
     const townData = worldGenerator.createTownMap();
     world.getCurrentMap = () => townData.mapData;
-    townData.buildingSpawns.forEach(s => {
+    townData.buildingSpawns.forEach(spawn => {
         const b = world.createEntity();
-        world.addComponent(b, 'PositionComponent', new PositionComponent(s.x, s.y));
-        world.addComponent(b, 'ASCIIRenderComponent', new ASCIIRenderComponent('B', '#555555'));
+        world.addComponent(b, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
+        // Use the COLOR from the new generator
+        world.addComponent(b, 'ASCIIRenderComponent', new ASCIIRenderComponent('+', spawn.color));
     });
 
     const player = world.createEntity();
-    world.addComponent(player, 'PositionComponent', new PositionComponent(15, 15));
+    // Start near the middle road so you aren't stuck in a building
+    world.addComponent(player, 'PositionComponent', new PositionComponent(40, 22));
     world.addComponent(player, 'ASCIIRenderComponent', new ASCIIRenderComponent('@', '#FFD700'));
     world.addComponent(player, 'NeedsComponent', new NeedsComponent());
     world.addComponent(player, 'MicroplasticsComponent', new MicroplasticsComponent(0));
     world.addComponent(player, 'InventoryComponent', new InventoryComponent());
+    world.addComponent(player, 'ReputationComponent', new ReputationComponent());
     world.playerEntityId = player;
 
-    // --- SCHEDULED WORKER NPC ---
+    const dsm = world.createEntity();
+    world.addComponent(dsm, 'PositionComponent', new PositionComponent(42, 22));
+    world.addComponent(dsm, 'ASCIIRenderComponent', new ASCIIRenderComponent('M', 'red'));
+    world.addComponent(dsm, 'ItemComponent', new ItemComponent('item_004_dsm', 'DSM Manual'));
+
+    const ghost = world.createEntity();
+    world.addComponent(ghost, 'PositionComponent', new PositionComponent(44, 22));
+    world.addComponent(ghost, 'ASCIIRenderComponent', new ASCIIRenderComponent('G', '#ff00ffaa'));
+    world.addComponent(ghost, 'DelusionComponent', new DelusionComponent());
+    world.addComponent(ghost, 'DialogueComponent', new DialogueComponent('D_Guest'));
+
+    // Update Worker to use new map coordinates (e.g., commute between districts)
     const worker = world.createEntity();
-    world.addComponent(worker, 'PositionComponent', new PositionComponent(5, 5));
+    world.addComponent(worker, 'PositionComponent', new PositionComponent(10, 22)); // Commercial zone
     world.addComponent(worker, 'ASCIIRenderComponent', new ASCIIRenderComponent('W', 'orange'));
     world.addComponent(worker, 'ScheduleComponent', new ScheduleComponent({
-        "0900": { "action": "moveTo", "target": { "x": 40, "y": 10 } }, // Commute to work at 9 AM
-        "1700": { "action": "moveTo", "target": { "x": 5, "y": 5 } }   // Commute home at 5 PM
+        "0900": { "action": "moveTo", "target": { "x": 65, "y": 22 } }, // Commute to Slums
+        "1700": { "action": "moveTo", "target": { "x": 10, "y": 22 } }  // Commute back
     }));
 
     world.getRenderableEntities = () => {
@@ -90,13 +110,13 @@ async function init() {
     world.registerSystem(new PlayerControlSystem());
     world.registerSystem(new InventoryUISystem(world, renderer));
     world.registerSystem(new TimeSystem());
-    world.registerSystem(new ScheduleSystem()); // <--- NEW
-    world.registerSystem(new NPCMovementSystem()); // <--- NEW
+    world.registerSystem(new ScheduleSystem());
+    world.registerSystem(new NPCMovementSystem());
     world.registerSystem(new AINeedsSystem(moduleManager));
     // ... other passive systems ...
 
     const gameLoop = new GameLoop(world, renderer);
     gameLoop.start();
-    document.getElementById('ui-textbox').innerText = "Wait until 09:00 to see the Worker (W) commute.";
+    document.getElementById('ui-textbox').innerText = "Explore the city districts.";
 }
 init();
