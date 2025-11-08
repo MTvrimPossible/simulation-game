@@ -1,3 +1,5 @@
+// src/systems/inventory_ui.js - v2 (Triggers pause)
+
 import { System } from '../ecs.js';
 
 export class InventoryUISystem extends System {
@@ -6,38 +8,34 @@ export class InventoryUISystem extends System {
         this.world = world;
         this.renderer = renderer;
         this.isOpen = false;
-        this.inventoryAction = null; // 'USE' or 'DROP'
 
-        // Listen for 'I' key to toggle inventory
         window.addEventListener('keydown', (e) => {
+            // Toggle with 'I'
             if (e.key === 'i' || e.key === 'I') {
                 this.toggleInventory();
             }
-            // If open, handle number keys for selection
+            // Select with Number Keys if open
             if (this.isOpen && e.key >= '1' && e.key <= '9') {
-                const index = parseInt(e.key) - 1;
-                this.handleItemSelection(index);
+                this.handleItemSelection(parseInt(e.key) - 1);
             }
         });
     }
 
     toggleInventory() {
         this.isOpen = !this.isOpen;
+        // CRITICAL: Tell the world to pause/unpause
+        this.world.isPaused = this.isOpen;
+
         if (this.isOpen) {
-            console.log("[InventoryUI] Opened.");
             this.renderInventory();
-            // Pause game loop here if we had a unified pause mechanism
         } else {
-            console.log("[InventoryUI] Closed.");
-            // Clear UI area by re-rendering the game world next frame naturally
-             // For now, we might need to manually trigger a re-render or clear the pre tag if the game loop doesn't immediately overwrite it.
+            // When closing, the GameLoop will naturally re-render the map next frame.
         }
     }
 
     renderInventory() {
         const player = this.world.playerEntityId;
         const inventory = this.world.getComponent(player, 'InventoryComponent');
-
         if (!inventory) return;
 
         let output = "=== INVENTORY ===\n\n";
@@ -50,8 +48,6 @@ export class InventoryUISystem extends System {
         }
         output += "\n[I] Close";
 
-        // HACK: Directly overwrite the game screen for now.
-        // In a real engine, this would be a separate UI layer on top of the canvas/pre.
         document.getElementById('game-screen').innerHTML = output;
     }
 
@@ -61,24 +57,16 @@ export class InventoryUISystem extends System {
 
         if (inventory && inventory.items[index]) {
             const item = inventory.items[index];
-            console.log(`[InventoryUI] Selected ${item.name}`);
-            // TODO: trigger 'USE' action here
-             this.useItem(player, item, index);
-             this.toggleInventory(); // Close after use
+
+            // Dispatch consume event
+            window.dispatchEvent(new CustomEvent('OnConsumeItem', {
+                 detail: { entityId: player, item: item }
+            }));
+
+            // Remove and close
+            inventory.items.splice(index, 1);
+            this.toggleInventory();
+            document.getElementById('ui-textbox').innerText = `Used: ${item.name}`;
         }
-    }
-
-    useItem(player, itemData, index) {
-         // Dispatch event for other systems to handle the specific EFFECT of the item
-         // e.g. NeedsSystem listens for 'OnConsumeItem'
-         window.dispatchEvent(new CustomEvent('OnConsumeItem', {
-             detail: { entityId: player, item: itemData }
-         }));
-
-         // Remove from inventory
-         const inventory = this.world.getComponent(player, 'InventoryComponent');
-         inventory.items.splice(index, 1);
-
-         document.getElementById('ui-textbox').innerText = `Used: ${itemData.name}`;
     }
 }
