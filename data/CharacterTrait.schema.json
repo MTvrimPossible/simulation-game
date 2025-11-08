@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CharacterTrait",
+  "description": "Defines a composable trait that alters an entity's base stats and behavior.",
+  "type": "object",
+  "required": ["id", "name"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique ID, e.g., 'Trait.Insomniac'."
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name of the trait."
+    },
+    "description": {
+      "type": "string",
+      "description": "Flavor text description."
+    },
+    "modify_stats": {
+      "type": "object",
+      "description": "Key-value pairs where keys are stat paths and values are multipliers or flat modifiers.",
+      "additionalProperties": {
+        "type": "number"
+      },
+      "examples": [
+        { "Needs.Decay.Sleep": 1.5 },
+        { "Stats.Strength": 2 }
+      ]
+    },
+    "add_dialogue": {
+      "type": "array",
+      "description": "Tags that unlock specific dialogue options for this character.",
+      "items": {
+        "type": "string"
+      },
+      "examples": [["GrantsDialogue.Flirty", "GrantsDialogue.Cryptic"]]
+    },
+    "assign_ai_package": {
+      "type": "string",
+      "description": "Overrides the default AI behavior package.",
+      "examples": ["AI.Package.CrazedGuest", "AI.Package.GuardPatrol"]
+    }
+  }
+}
