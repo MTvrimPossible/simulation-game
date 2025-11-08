@@ -15,22 +15,37 @@ export class WorldGenerator {
      * Generates the high-level town map.
      * @returns {object} { mapData: 2D Array, buildingSpawns: Array<{x, y, tags}> }
      */
-    createTownMap(width = 50, height = 30) {
-        // 1. Initialize blank map with grass/terrain
+createTownMap(width = 60, height = 40) {
+        // 1. Fill with grass/floor ('.') instead of null
         const mapData = Array(height).fill(null).map(() => Array(width).fill('.'));
         const buildingSpawns = [];
 
-        // 2. Simple Road Generation (Grid-like for now)
-        const roadIntervalX = 15;
-        const roadIntervalY = 10;
-
+        // 2. Draw a border so player can't walk off the edge
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                if (x % roadIntervalX === 0 || y % roadIntervalY === 0) {
-                    mapData[y][x] = '#'; // Road Character
+                if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+                    mapData[y][x] = '#';
                 }
             }
         }
+
+        // 3. Place a few specific buildings
+        // (In a real PCG system, this would be a loop with random coordinates)
+        const buildings = [
+            {x: 10, y: 10, tags: ['residential']},
+            {x: 40, y: 10, tags: ['commercial', 'bar']},
+            {x: 10, y: 30, tags: ['municipal', 'graveyard']},
+            {x: 45, y: 32, tags: ['strange']}
+        ];
+
+        buildings.forEach(b => {
+            // Mark the building on the map
+            mapData[b.y][b.x] = 'B';
+            buildingSpawns.push(b);
+        });
+
+        return { mapData, buildingSpawns };
+    }
 
         // 3. Place Buildings in the 'blocks' between roads
         // Naive placement: finds empty spots and places a 'Building Marker'
