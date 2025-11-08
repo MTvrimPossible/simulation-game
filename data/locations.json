@@ -1,0 +1,26 @@
+{
+  "loc_theater": {
+    "name": "Abandoned Theater",
+    "generation_tags": ["commercial", "large_interior", "dark"],
+    "required_features": ["stage", "seating_area", "projector_booth"],
+    "associated_systems": ["VibeSystem", "AudioSystem"]
+  },
+  "loc_graveyard": {
+    "name": "Municipal Graveyard",
+    "generation_tags": ["outdoor", "spooky", "soil"],
+    "required_features": ["graves", "mausoleum", "fence_perimeter"],
+    "associated_systems": ["GravePortalSystem", "TimeSystem"]
+  },
+  "loc_barber": {
+    "name": "Barber Shop",
+    "generation_tags": ["commercial", "small_interior"],
+    "required_features": ["barber_chair", "mirror", "waiting_area"],
+    "associated_systems": ["ReputationSystem", "DialogueSystem"]
+  },
+  "loc_diner": {
+    "name": "All-Nite Diner",
+    "generation_tags": ["commercial", "food_source"],
+    "required_features": ["counter", "booths", "kitchen"],
+    "associated_systems": ["NeedsSystem", "ContagionSystem", "DialogueSystem"]
+  }
+}
