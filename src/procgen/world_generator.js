@@ -1,7 +1,7 @@
 /**
- * world_generator.js v3
+ * world_generator.js v4
  * PILLAR 5: RADICAL MODULARITY (Procedural Generation)
- * Generates a zoned city map with WALKABLE roads.
+ * Generates a clean, navigable city with no overlaps.
  */
 
 export class WorldGenerator {
@@ -10,60 +10,75 @@ export class WorldGenerator {
     }
 
     createTownMap(width = 80, height = 40) {
+        // Fill with grass '.'
         const mapData = Array(height).fill(null).map(() => Array(width).fill('.'));
         const buildingSpawns = [];
 
-        const commercialZone = { startX: 5, endX: 30, tag: 'commercial', color: '#aaf' };
-        const residentialZone = { startX: 35, endX: 55, tag: 'residential', color: '#afa' };
-        const slumsZone = { startX: 60, endX: 75, tag: 'slums', color: '#999' };
-        const zones = [commercialZone, residentialZone, slumsZone];
+        // 1. Draw MAIN ROADS (The Skeleton)
+        const midY = Math.floor(height / 2);
+        const midX = Math.floor(width / 2);
 
-        // 1. Draw Roads with '=' (Walkable) instead of '#' (Wall)
-        const mainRoadY = Math.floor(height / 2);
-        for (let x = 1; x < width - 1; x++) mapData[mainRoadY][x] = '=';
+        // Horizontal main road
+        for (let x = 1; x < width - 1; x++) mapData[midY][x] = '=';
+        for (let x = 1; x < width - 1; x++) mapData[midY+1][x] = '='; // Double wide for clarity
 
+        // Vertical main road
+        for (let y = 1; y < height - 1; y++) mapData[y][midX] = '=';
+        for (let y = 1; y < height - 1; y++) mapData[y][midX+1] = '=';
+
+        // 2. Define Zones relative to the skeleton
+        const zones = [
+            { tag: 'commercial', color: '#aaf', x1: 2, y1: 2, x2: midX - 2, y2: midY - 2 },     // Top Left
+            { tag: 'residential', color: '#afa', x1: midX + 4, y1: 2, x2: width - 3, y2: midY - 2 }, // Top Right
+            { tag: 'slums', color: '#999', x1: 2, y1: midY + 4, x2: midX - 2, y2: height - 3 }   // Bottom Left
+        ];
+
+        // 3. Place buildings CAREFULLY
         zones.forEach(zone => {
-            const roadX = Math.floor((zone.startX + zone.endX) / 2);
-            for (let y = 1; y < height - 1; y++) mapData[y][roadX] = '=';
-        });
+            let attempts = 0;
+            let buildingsPlaced = 0;
+            while (buildingsPlaced < 6 && attempts < 100) {
+                attempts++;
+                const w = 5, h = 4;
+                const bx = Math.floor(Math.random() * (zone.x2 - zone.x1 - w)) + zone.x1;
+                const by = Math.floor(Math.random() * (zone.y2 - zone.y1 - h)) + zone.y1;
 
-        // 2. Place Buildings
-        zones.forEach(zone => {
-            for (let i = 0; i < 8; i++) {
-                const w = 4, h = 3;
-                let bx = zone.startX + Math.floor(Math.random() * (zone.endX - zone.startX - w));
-                let by = Math.floor(Math.random() * (height - h - 2)) + 1;
-
-                // Don't build ON the main road
-                if (by <= mainRoadY && by + h >= mainRoadY) by += 4;
-
-                this.drawBuilding(mapData, bx, by, w, h);
-                buildingSpawns.push({
-                    x: bx + Math.floor(w/2),
-                    y: by + h,
-                    tags: [zone.tag],
-                    color: zone.color
-                });
+                if (this.isAreaClear(mapData, bx - 1, by - 1, w + 2, h + 2)) { // Check with 1-tile buffer
+                    this.drawBuilding(mapData, bx, by, w, h);
+                    buildingSpawns.push({
+                        x: bx + Math.floor(w / 2),
+                        y: by + h,
+                        tags: [zone.tag],
+                        color: zone.color
+                    });
+                    buildingsPlaced++;
+                }
             }
         });
 
-        // 3. Border (Actual Walls)
+        // 4. Outer Walls
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                if (x===0 || x===width-1 || y===0 || y===height-1) mapData[y][x] = '#';
+                if (x === 0 || x === width - 1 || y === 0 || y === height - 1) mapData[y][x] = '#';
             }
         }
 
         return { mapData, buildingSpawns };
     }
 
+    isAreaClear(map, x, y, w, h) {
+        for (let dy = 0; dy < h; dy++) {
+            for (let dx = 0; dx < w; dx++) {
+                if (!map[y + dy] || map[y + dy][x + dx] !== '.') return false;
+            }
+        }
+        return true;
+    }
+
     drawBuilding(map, x, y, w, h) {
         for (let dy = 0; dy < h; dy++) {
             for (let dx = 0; dx < w; dx++) {
-                // Ensure we don't draw out of bounds if random placement is tight
-                if (map[y+dy] && map[y+dy][x+dx] !== undefined) {
-                     map[y+dy][x+dx] = (dy === h-1 && dx === Math.floor(w/2)) ? '+' : '#';
-                }
+                map[y + dy][x + dx] = (dy === h - 1 && dx === Math.floor(w / 2)) ? '+' : '#';
             }
         }
     }
