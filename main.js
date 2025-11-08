@@ -30,6 +30,7 @@ import { ItemComponent } from './src/components/ItemComponent.js';
 import { DelusionComponent } from './src/components/DelusionComponent.js';
 import { ScheduleComponent } from './src/components/ScheduleComponent.js';
 import { DestinationComponent } from './src/components/DestinationComponent.js';
+import { ItemEffectSystem } from './src/systems/item_effects.js';
 
 class ReputationComponent { constructor() { this.value = 0; } }
 
@@ -113,6 +114,7 @@ async function init() {
     world.registerSystem(new ScheduleSystem());
     world.registerSystem(new NPCMovementSystem());
     world.registerSystem(new AINeedsSystem(moduleManager));
+    world.registerSystem(new ItemEffectSystem(world, moduleManager)); // <--- NEW
     // ... other passive systems ...
 
     const gameLoop = new GameLoop(world, renderer);
