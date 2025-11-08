@@ -1,8 +1,6 @@
 /**
- * main.js
- * THE INTEGRATOR - v8 Zoned City
+ * main.js v10 - Full Generation Integrated
  */
-
 import { World } from './src/ecs.js';
 import { Renderer } from './src/renderer.js';
 import { ModuleManager } from './src/module_manager.js';
@@ -18,6 +16,7 @@ import { ReputationSystem } from './src/systems/reputation.js';
 import { InventoryUISystem } from './src/systems/inventory_ui.js';
 import { ScheduleSystem } from './src/systems/schedule_system.js';
 import { NPCMovementSystem } from './src/systems/npc_movement.js';
+import { ItemEffectSystem } from './src/systems/item_effects.js'; // NEW IMPORT
 import { WorldGenerator } from './src/procgen/world_generator.js';
 import { DialogueSystem } from './src/dialogue_system.js';
 import { PositionComponent } from './src/components/PositionComponent.js';
@@ -30,7 +29,6 @@ import { ItemComponent } from './src/components/ItemComponent.js';
 import { DelusionComponent } from './src/components/DelusionComponent.js';
 import { ScheduleComponent } from './src/components/ScheduleComponent.js';
 import { DestinationComponent } from './src/components/DestinationComponent.js';
-import { ItemEffectSystem } from './src/systems/item_effects.js';
 
 class ReputationComponent { constructor() { this.value = 0; } }
 
@@ -55,18 +53,31 @@ async function init() {
         }
     });
 
-    // --- WORLD GEN (UPDATED) ---
+    // --- WORLD GEN ---
     const townData = worldGenerator.createTownMap();
     world.getCurrentMap = () => townData.mapData;
+
+    // 1. Buildings
     townData.buildingSpawns.forEach(spawn => {
         const b = world.createEntity();
         world.addComponent(b, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
-        // Use the COLOR from the new generator
         world.addComponent(b, 'ASCIIRenderComponent', new ASCIIRenderComponent('+', spawn.color));
     });
 
+    // 2. Items (NEW LOOP)
+    if (townData.itemSpawns) {
+        townData.itemSpawns.forEach(spawn => {
+            const itemData = moduleManager.items[spawn.id];
+            if (itemData) {
+                const itemEntity = world.createEntity();
+                world.addComponent(itemEntity, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
+                world.addComponent(itemEntity, 'ASCIIRenderComponent', new ASCIIRenderComponent(itemData.ascii_tile, itemData.color || 'white'));
+                world.addComponent(itemEntity, 'ItemComponent', new ItemComponent(spawn.id, itemData.name));
+            }
+        });
+    }
+
     const player = world.createEntity();
-    // Start near the middle road so you aren't stuck in a building
     world.addComponent(player, 'PositionComponent', new PositionComponent(40, 22));
     world.addComponent(player, 'ASCIIRenderComponent', new ASCIIRenderComponent('@', '#FFD700'));
     world.addComponent(player, 'NeedsComponent', new NeedsComponent());
@@ -75,6 +86,7 @@ async function init() {
     world.addComponent(player, 'ReputationComponent', new ReputationComponent());
     world.playerEntityId = player;
 
+    // Manual spawns for testing delusions still needed
     const dsm = world.createEntity();
     world.addComponent(dsm, 'PositionComponent', new PositionComponent(42, 22));
     world.addComponent(dsm, 'ASCIIRenderComponent', new ASCIIRenderComponent('M', 'red'));
@@ -85,15 +97,6 @@ async function init() {
     world.addComponent(ghost, 'ASCIIRenderComponent', new ASCIIRenderComponent('G', '#ff00ffaa'));
     world.addComponent(ghost, 'DelusionComponent', new DelusionComponent());
     world.addComponent(ghost, 'DialogueComponent', new DialogueComponent('D_Guest'));
-
-    // Update Worker to use new map coordinates (e.g., commute between districts)
-    const worker = world.createEntity();
-    world.addComponent(worker, 'PositionComponent', new PositionComponent(10, 22)); // Commercial zone
-    world.addComponent(worker, 'ASCIIRenderComponent', new ASCIIRenderComponent('W', 'orange'));
-    world.addComponent(worker, 'ScheduleComponent', new ScheduleComponent({
-        "0900": { "action": "moveTo", "target": { "x": 65, "y": 22 } }, // Commute to Slums
-        "1700": { "action": "moveTo", "target": { "x": 10, "y": 22 } }  // Commute back
-    }));
 
     world.getRenderableEntities = () => {
         const renderables = [];
@@ -114,11 +117,10 @@ async function init() {
     world.registerSystem(new ScheduleSystem());
     world.registerSystem(new NPCMovementSystem());
     world.registerSystem(new AINeedsSystem(moduleManager));
-    world.registerSystem(new ItemEffectSystem(world, moduleManager)); // <--- NEW
-    // ... other passive systems ...
+    world.registerSystem(new ItemEffectSystem(world, moduleManager)); // <--- NEW REGISTER
 
     const gameLoop = new GameLoop(world, renderer);
     gameLoop.start();
-    document.getElementById('ui-textbox').innerText = "Explore the city districts.";
+    document.getElementById('ui-textbox').innerText = "Explore. Find water ('~') near the main road.";
 }
 init();
