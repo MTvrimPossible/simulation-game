@@ -1,5 +1,5 @@
 /**
- * main.js v11 - COMPLETE SYNC
+ * main.js v12 - Quests Integrated
  */
 import { World } from './src/ecs.js';
 import { Renderer } from './src/renderer.js';
@@ -17,8 +17,9 @@ import { InventoryUISystem } from './src/systems/inventory_ui.js';
 import { ScheduleSystem } from './src/systems/schedule_system.js';
 import { NPCMovementSystem } from './src/systems/npc_movement.js';
 import { ItemEffectSystem } from './src/systems/item_effects.js';
-import { NeedsUISystem } from './src/systems/needs_ui.js';     // <-- NEW
-import { MortalitySystem } from './src/systems/mortality.js';   // <-- NEW
+import { NeedsUISystem } from './src/systems/needs_ui.js';
+import { MortalitySystem } from './src/systems/mortality.js';
+import { QuestSystem } from './src/systems/quest_system.js'; // NEW
 import { WorldGenerator } from './src/procgen/world_generator.js';
 import { DialogueSystem } from './src/dialogue_system.js';
 import { LegacyManager } from './src/legacy_manager.js';
@@ -31,6 +32,7 @@ import { InventoryComponent } from './src/components/InventoryComponent.js';
 import { ItemComponent } from './src/components/ItemComponent.js';
 import { DelusionComponent } from './src/components/DelusionComponent.js';
 import { ScheduleComponent } from './src/components/ScheduleComponent.js';
+import { QuestComponent } from './src/components/QuestComponent.js'; // NEW
 
 class ReputationComponent { constructor() { this.value = 0; } }
 
@@ -38,7 +40,7 @@ async function init() {
     const world = new World();
     const renderer = new Renderer('game-screen');
     const moduleManager = new ModuleManager();
-    const legacyManager = new LegacyManager(); // Instantiated early
+    const legacyManager = new LegacyManager();
 
     try { await moduleManager.loadAllData(); } catch (error) { return; }
     const dialogueSystem = new DialogueSystem(moduleManager);
@@ -59,24 +61,20 @@ async function init() {
 
     const townData = worldGenerator.createTownMap();
     world.getCurrentMap = () => townData.mapData;
-
-    townData.buildingSpawns.forEach(spawn => {
+    townData.buildingSpawns.forEach(s => {
         const b = world.createEntity();
-        world.addComponent(b, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
-        world.addComponent(b, 'ASCIIRenderComponent', new ASCIIRenderComponent('+', spawn.color));
+        world.addComponent(b, 'PositionComponent', new PositionComponent(s.x, s.y));
+        world.addComponent(b, 'ASCIIRenderComponent', new ASCIIRenderComponent('+', s.color));
     });
-
-    if (townData.itemSpawns) {
-        townData.itemSpawns.forEach(spawn => {
-            const itemData = moduleManager.items[spawn.id];
-            if (itemData) {
-                const i = world.createEntity();
-                world.addComponent(i, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
-                world.addComponent(i, 'ASCIIRenderComponent', new ASCIIRenderComponent(itemData.ascii_tile, itemData.color || 'white'));
-                world.addComponent(i, 'ItemComponent', new ItemComponent(spawn.id, itemData.name));
-            }
-        });
-    }
+    if (townData.itemSpawns) townData.itemSpawns.forEach(s => {
+        const d = moduleManager.items[s.id];
+        if (d) {
+            const i = world.createEntity();
+            world.addComponent(i, 'PositionComponent', new PositionComponent(s.x, s.y));
+            world.addComponent(i, 'ASCIIRenderComponent', new ASCIIRenderComponent(d.ascii_tile, d.color || 'white'));
+            world.addComponent(i, 'ItemComponent', new ItemComponent(s.id, d.name));
+        }
+    });
 
     const player = world.createEntity();
     world.addComponent(player, 'PositionComponent', new PositionComponent(40, 22));
@@ -85,9 +83,12 @@ async function init() {
     world.addComponent(player, 'MicroplasticsComponent', new MicroplasticsComponent(0));
     world.addComponent(player, 'InventoryComponent', new InventoryComponent());
     world.addComponent(player, 'ReputationComponent', new ReputationComponent());
+    // ASSIGN STARTING QUEST
+    const q = new QuestComponent();
+    q.activeQuests['quest_001_intro'] = { stage: 'start', objectives: {} };
+    world.addComponent(player, 'QuestComponent', q);
     world.playerEntityId = player;
 
-    // Manual spawns (DSM & Ghost)
     const dsm = world.createEntity();
     world.addComponent(dsm, 'PositionComponent', new PositionComponent(42, 22));
     world.addComponent(dsm, 'ASCIIRenderComponent', new ASCIIRenderComponent('M', 'red'));
@@ -112,7 +113,6 @@ async function init() {
         return renderables;
     };
 
-    // REGISTER ALL SYSTEMS
     world.registerSystem(new PlayerControlSystem());
     world.registerSystem(new InventoryUISystem(world, renderer));
     world.registerSystem(new TimeSystem());
@@ -120,11 +120,12 @@ async function init() {
     world.registerSystem(new NPCMovementSystem());
     world.registerSystem(new AINeedsSystem(moduleManager));
     world.registerSystem(new ItemEffectSystem(world, moduleManager));
-    world.registerSystem(new MortalitySystem(world, legacyManager)); // <--- Registered
-    world.registerSystem(new NeedsUISystem(world));                 // <--- Registered
+    world.registerSystem(new MortalitySystem(world, legacyManager));
+    world.registerSystem(new NeedsUISystem(world));
+    world.registerSystem(new QuestSystem(moduleManager)); // REGISTERED
 
     const gameLoop = new GameLoop(world, renderer);
     gameLoop.start();
-    document.getElementById('ui-textbox').innerText = "SURVIVE. Watch your stats.";
+    document.getElementById('ui-textbox').innerText = "Quest Started: Find Water.";
 }
 init();
