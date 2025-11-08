@@ -1,10 +1,6 @@
 /**
  * main.js
- * THE INTEGRATOR
- *
- * This is the entry point that ties all 5 Pillars together.
- * It strictly follows the initialization order to ensure data is ready
- * before systems try to use it.
+ * THE INTEGRATOR - v2 DEBUG
  */
 
 // --- 1. MODULE IMPORTS ---
@@ -33,9 +29,10 @@ import { PositionComponent } from './src/components/PositionComponent.js';
 import { ASCIIRenderComponent } from './src/components/ASCIIRenderComponent.js';
 import { NeedsComponent } from './src/components/NeedsComponent.js';
 import { MicroplasticsComponent } from './src/components/MicroplasticsComponent.js';
+// CRITICAL IMPORT:
 import { DialogueComponent } from './src/components/DialogueComponent.js';
 
-// Stubs for components not yet fully implemented in their own files
+// Stubs
 class InventoryComponent { constructor() { this.items = []; } }
 class ReputationComponent { constructor() { this.value = 0; } }
 
@@ -43,70 +40,71 @@ class ReputationComponent { constructor() { this.value = 0; } }
 async function init() {
     console.log("[Main] Beginning initialization sequence...");
 
-    // STEP 1: INSTANTIATE CORE MANAGERS
     const world = new World();
     const renderer = new Renderer('game-screen');
     const moduleManager = new ModuleManager();
 
-    // STEP 2: LOAD DATA (ASYNC)
     try {
         await moduleManager.loadAllData();
     } catch (error) {
-        console.error("FATAL: Could not load game data. Aborting start.");
-        // Ensure the UI tells the user something went wrong
+        console.error("FATAL: Could not load game data.", error);
         document.getElementById('ui-textbox').innerText = "FATAL ERROR: Could not load game data. Check console (F12).";
         return;
     }
 
-    // STEP 3: INSTANTIATE DATA-RELIANT MANAGERS
     const dialogueSystem = new DialogueSystem(moduleManager);
     const worldGenerator = new WorldGenerator(moduleManager);
-    const legacyManager = new LegacyManager();
+    // const legacyManager = new LegacyManager(); // Unused for now
 
-    // --- EVENT WIRING ---
-    // Wire up interaction event for bumping into things
+    // --- DEBUG EVENT WIRING ---
     window.addEventListener('OnPlayerInteract', (e) => {
+        // --- START DEBUG BLOCK ---
+        console.log("[Main] Event DETECTED:", e.detail);
+
         const targetId = e.detail.target;
         const dialogueComp = world.getComponent(targetId, 'DialogueComponent');
+
+        console.log(`[Main] Checking Entity ${targetId} for DialogueComponent... Result:`, dialogueComp);
+
         if (dialogueComp) {
+             console.log(`[Main] SUCCESS. Starting dialogue tree: '${dialogueComp.treeId}'`);
              dialogueSystem.startDialogue(dialogueComp.treeId, world, world.playerEntityId);
+        } else {
+             console.warn("[Main] FAILURE. Target has no DialogueComponent.");
         }
+        // --- END DEBUG BLOCK ---
     });
 
-    // STEP 4: GENERATE WORLD & PLAYER
+    // --- WORLD GEN ---
     console.log("[Main] Generating world...");
     const townData = worldGenerator.createTownMap();
-    world.getCurrentMap = () => townData.mapData; // Attach map data to world
+    world.getCurrentMap = () => townData.mapData;
 
-    // 4a. Populate Static World Entities (Buildings)
     townData.buildingSpawns.forEach(spawn => {
         const building = world.createEntity();
         world.addComponent(building, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
         world.addComponent(building, 'ASCIIRenderComponent', new ASCIIRenderComponent('B', '#555555'));
     });
 
-    // 4b. Create Player
+    // --- PLAYER GEN ---
     console.log("[Main] Spawning player...");
     const player = world.createEntity();
-    // Start player in a safe open spot based on our new open map generator (e.g., 15, 15)
     world.addComponent(player, 'PositionComponent', new PositionComponent(15, 15));
     world.addComponent(player, 'ASCIIRenderComponent', new ASCIIRenderComponent('@', '#FFD700'));
     world.addComponent(player, 'NeedsComponent', new NeedsComponent());
     world.addComponent(player, 'MicroplasticsComponent', new MicroplasticsComponent(0));
     world.addComponent(player, 'InventoryComponent', new InventoryComponent());
     world.addComponent(player, 'ReputationComponent', new ReputationComponent());
-
-    // Tag the player globally for easy retrieval by systems
     world.playerEntityId = player;
 
-    // 4c. Spawn Debug NPC (for testing interaction)
+    // --- NPC GEN (DEBUG NPC) ---
     console.log("[Main] Spawning Debug NPC...");
     const npc = world.createEntity();
-    world.addComponent(npc, 'PositionComponent', new PositionComponent(18, 15)); // Near player
+    world.addComponent(npc, 'PositionComponent', new PositionComponent(18, 15));
     world.addComponent(npc, 'ASCIIRenderComponent', new ASCIIRenderComponent('D', 'cyan'));
     world.addComponent(npc, 'DialogueComponent', new DialogueComponent('D_Debug'));
 
-    // 4d. Render Helper
+    // --- RENDER HELPER ---
     world.getRenderableEntities = () => {
         const renderables = [];
         for (const entityId of world.entities) {
@@ -119,7 +117,7 @@ async function init() {
         return renderables;
     };
 
-    // STEP 5: REGISTER ALL ECS SYSTEMS
+    // --- REGISTER SYSTEMS ---
     world.registerSystem(new PlayerControlSystem());
     world.registerSystem(new TimeSystem());
     world.registerSystem(new AINeedsSystem(moduleManager));
@@ -129,16 +127,12 @@ async function init() {
     world.registerSystem(new MicroplasticsSystem());
     world.registerSystem(new ReputationSystem());
 
-    // STEP 6: INITIALIZE GAME LOOP
+    // --- START ---
     const gameLoop = new GameLoop(world, renderer);
-
-    // STEP 7: START LOOP
-    console.log("[Main] Initialization complete. Starting game loop.");
+    console.log("[Main] Starting loop.");
     gameLoop.start();
 
-    // Final UI update
-    document.getElementById('ui-textbox').innerText = "Simulation initialized. Use Arrow Keys to move. Bump into 'D' to talk.";
+    document.getElementById('ui-textbox').innerText = "Simulation initialized. Bump into 'D' to talk.";
 }
 
-// --- ENTRY POINT ---
 init();
