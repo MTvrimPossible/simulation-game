@@ -1,0 +1,18 @@
+{
+  "quest_001_intro": {
+    "title": "Welcome to the Rot",
+    "description": "Find something to drink before you wither away.",
+    "stages": {
+      "start": {
+        "objectives": [
+          { "type": "HAVE_ITEM", "target": "item_001_water", "count": 1, "text": "Find Bottled Water" }
+        ],
+        "next_stage": "complete"
+      },
+      "complete": {
+        "reward": { "currency": 50, "reputation": 5 },
+        "completion_text": "You might just survive another day."
+      }
+    }
+  }
+}
