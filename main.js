@@ -1,5 +1,5 @@
 /**
- * main.js v10 - Full Generation Integrated
+ * main.js v11 - COMPLETE SYNC
  */
 import { World } from './src/ecs.js';
 import { Renderer } from './src/renderer.js';
@@ -16,9 +16,12 @@ import { ReputationSystem } from './src/systems/reputation.js';
 import { InventoryUISystem } from './src/systems/inventory_ui.js';
 import { ScheduleSystem } from './src/systems/schedule_system.js';
 import { NPCMovementSystem } from './src/systems/npc_movement.js';
-import { ItemEffectSystem } from './src/systems/item_effects.js'; // NEW IMPORT
+import { ItemEffectSystem } from './src/systems/item_effects.js';
+import { NeedsUISystem } from './src/systems/needs_ui.js';     // <-- NEW
+import { MortalitySystem } from './src/systems/mortality.js';   // <-- NEW
 import { WorldGenerator } from './src/procgen/world_generator.js';
 import { DialogueSystem } from './src/dialogue_system.js';
+import { LegacyManager } from './src/legacy_manager.js';
 import { PositionComponent } from './src/components/PositionComponent.js';
 import { ASCIIRenderComponent } from './src/components/ASCIIRenderComponent.js';
 import { NeedsComponent } from './src/components/NeedsComponent.js';
@@ -28,7 +31,6 @@ import { InventoryComponent } from './src/components/InventoryComponent.js';
 import { ItemComponent } from './src/components/ItemComponent.js';
 import { DelusionComponent } from './src/components/DelusionComponent.js';
 import { ScheduleComponent } from './src/components/ScheduleComponent.js';
-import { DestinationComponent } from './src/components/DestinationComponent.js';
 
 class ReputationComponent { constructor() { this.value = 0; } }
 
@@ -36,6 +38,8 @@ async function init() {
     const world = new World();
     const renderer = new Renderer('game-screen');
     const moduleManager = new ModuleManager();
+    const legacyManager = new LegacyManager(); // Instantiated early
+
     try { await moduleManager.loadAllData(); } catch (error) { return; }
     const dialogueSystem = new DialogueSystem(moduleManager);
     const worldGenerator = new WorldGenerator(moduleManager);
@@ -53,26 +57,23 @@ async function init() {
         }
     });
 
-    // --- WORLD GEN ---
     const townData = worldGenerator.createTownMap();
     world.getCurrentMap = () => townData.mapData;
 
-    // 1. Buildings
     townData.buildingSpawns.forEach(spawn => {
         const b = world.createEntity();
         world.addComponent(b, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
         world.addComponent(b, 'ASCIIRenderComponent', new ASCIIRenderComponent('+', spawn.color));
     });
 
-    // 2. Items (NEW LOOP)
     if (townData.itemSpawns) {
         townData.itemSpawns.forEach(spawn => {
             const itemData = moduleManager.items[spawn.id];
             if (itemData) {
-                const itemEntity = world.createEntity();
-                world.addComponent(itemEntity, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
-                world.addComponent(itemEntity, 'ASCIIRenderComponent', new ASCIIRenderComponent(itemData.ascii_tile, itemData.color || 'white'));
-                world.addComponent(itemEntity, 'ItemComponent', new ItemComponent(spawn.id, itemData.name));
+                const i = world.createEntity();
+                world.addComponent(i, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
+                world.addComponent(i, 'ASCIIRenderComponent', new ASCIIRenderComponent(itemData.ascii_tile, itemData.color || 'white'));
+                world.addComponent(i, 'ItemComponent', new ItemComponent(spawn.id, itemData.name));
             }
         });
     }
@@ -86,7 +87,7 @@ async function init() {
     world.addComponent(player, 'ReputationComponent', new ReputationComponent());
     world.playerEntityId = player;
 
-    // Manual spawns for testing delusions still needed
+    // Manual spawns (DSM & Ghost)
     const dsm = world.createEntity();
     world.addComponent(dsm, 'PositionComponent', new PositionComponent(42, 22));
     world.addComponent(dsm, 'ASCIIRenderComponent', new ASCIIRenderComponent('M', 'red'));
@@ -111,16 +112,19 @@ async function init() {
         return renderables;
     };
 
+    // REGISTER ALL SYSTEMS
     world.registerSystem(new PlayerControlSystem());
     world.registerSystem(new InventoryUISystem(world, renderer));
     world.registerSystem(new TimeSystem());
     world.registerSystem(new ScheduleSystem());
     world.registerSystem(new NPCMovementSystem());
     world.registerSystem(new AINeedsSystem(moduleManager));
-    world.registerSystem(new ItemEffectSystem(world, moduleManager)); // <--- NEW REGISTER
+    world.registerSystem(new ItemEffectSystem(world, moduleManager));
+    world.registerSystem(new MortalitySystem(world, legacyManager)); // <--- Registered
+    world.registerSystem(new NeedsUISystem(world));                 // <--- Registered
 
     const gameLoop = new GameLoop(world, renderer);
     gameLoop.start();
-    document.getElementById('ui-textbox').innerText = "Explore. Find water ('~') near the main road.";
+    document.getElementById('ui-textbox').innerText = "SURVIVE. Watch your stats.";
 }
 init();
