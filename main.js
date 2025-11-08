@@ -12,6 +12,7 @@ import { World } from './src/ecs.js';
 import { Renderer } from './src/renderer.js';
 import { ModuleManager } from './src/module_manager.js';
 import { GameLoop } from './src/game_loop.js';
+import { PlayerControlSystem } from './src/systems/player_control.js';
 
 // Systems
 import { TimeSystem } from './src/systems/time_system.js';
@@ -105,6 +106,7 @@ async function init() {
 
     // STEP 5: REGISTER ALL ECS SYSTEMS
     // Order matters slightly: Input/Time first, then Logic, then Output/Cleanup.
+    world.registerSystem(new PlayerControlSystem()); // <--- ADD THIS
     world.registerSystem(new TimeSystem());
     world.registerSystem(new AINeedsSystem(moduleManager));
     world.registerSystem(new LieIdleSystem());
@@ -118,7 +120,7 @@ async function init() {
 
     // STEP 7: START LOOP
     console.log("[Main] Initialization complete. Starting game loop.");
-    gameLoop.start();
+    gameLoop.start(); document.getElementById('ui-textbox').innerText = "Simulation initialized. WASD/Arrows to move.";
 }
 
 // --- ENTRY POINT ---
