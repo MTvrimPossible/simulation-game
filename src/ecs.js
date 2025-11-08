@@ -46,28 +46,30 @@ export class World {
         }
     }
 
-    // --- NEW: SERIALIZATION ---
+// In src/ecs.js Class World:
+
+    // Update serialize:
     serialize() {
         return JSON.stringify({
             nextEntityId: this.nextEntityId,
             entities: this.entities,
             components: this.components,
-            playerEntityId: this.playerEntityId
-            // Note: We do NOT save 'systems', they must be re-registered on load.
+            playerEntityId: this.playerEntityId,
+            mapData: this.mapData // <--- ADD THIS
         });
     }
 
+    // Update deserialize:
     deserialize(jsonString) {
         const data = JSON.parse(jsonString);
         this.nextEntityId = data.nextEntityId;
         this.entities = data.entities;
         this.components = data.components;
         this.playerEntityId = data.playerEntityId;
-
-        // IMPORTANT: Re-assign prototype methods if components were classes with methods.
-        // For now, our components are mostly data, BUT some like NeedsComponent have methods.
-        // We need a 'hydration' step here if we want those methods back.
-        // A simple way is just to ensure Systems don't rely on Component methods, only data.
-        // (We broke this rule with NeedsComponent.updateDecay earlier. We might need to fix that later.)
+        this.mapData = data.mapData; // <--- AND THIS
     }
-}
+
+    // AND ADD THIS HELPER SO GAMELOOP FINDS IT AFTER LOAD:
+    getCurrentMap() {
+        return this.mapData || [['.']];
+    }
