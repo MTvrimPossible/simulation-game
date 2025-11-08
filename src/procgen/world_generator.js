@@ -26,6 +26,19 @@ export class WorldGenerator {
         for (let y = 1; y < height - 1; y++) mapData[y][midX] = '=';
         for (let y = 1; y < height - 1; y++) mapData[y][midX+1] = '=';
 
+        const itemSpawns = [];
+
+        // Sprinkle some water bottles near roads
+        for (let i = 0; i < 5; i++) {
+             const rx = Math.floor(Math.random() * (width - 2)) + 1;
+             const ry = midY + (Math.random() < 0.5 ? -2 : 2); // Near main road
+             if (mapData[ry][rx] === '.') {
+                 itemSpawns.push({ x: rx, y: ry, id: 'item_001_water' });
+             }
+        }
+
+        return { mapData, buildingSpawns, itemSpawns }; // <--- Return NEW array
+
         // 2. Define Zones relative to the skeleton
         const zones = [
             { tag: 'commercial', color: '#aaf', x1: 2, y1: 2, x2: midX - 2, y2: midY - 2 },     // Top Left
