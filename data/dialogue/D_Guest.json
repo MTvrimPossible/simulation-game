@@ -1,0 +1,56 @@
+{
+  "root": "start",
+  "nodes": {
+    "start": {
+      "text": "Do you hear it? The humming. It's in the walls. It's in the water. They're broadcasting thoughts now.",
+      "options": [
+        {
+          "text": "Back away slowly.",
+          "link": "end_nervous"
+        },
+        {
+          "text": "[DSM] Ask about their delusions.",
+          "link": "dsm_probe",
+          "conditions": ["HasItem:item_004_dsm"]
+        }
+      ]
+    },
+    "dsm_probe": {
+      "text": "Delusions? DELUSIONS?! I see you have the manual. Turn to page 42. Read what it says about 'Electromagnetic Hypersensitivity'. THAT'S ME.",
+      "options": [
+        {
+          "text": "It says here that's often psychosomatic.",
+          "link": "agitated_truth",
+          "effects": ["TriggerSocial:TRUTH"]
+        },
+        {
+          "text": "My god... you're right. The readings are off the charts.",
+          "link": "calm_lie",
+          "effects": ["TriggerSocial:LIE"]
+        }
+      ]
+    },
+    "agitated_truth": {
+      "text": "LIES! YOU'RE ONE OF THEM! GET AWAY FROM ME!",
+      "options": []
+    },
+    "calm_lie": {
+      "text": "See? I KNEW IT. Finally, someone awake. Take this, it stops the signals.",
+      "options": [
+        {
+          "text": "Take the tinfoil hat.",
+          "effects": ["SpawnItem:item_tinfoil_hat"],
+          "link": "end_calm"
+        }
+      ]
+    },
+    "end_nervous": {
+      "text": "(The guest returns to muttering at the radiator.)",
+      "options": []
+    },
+    "end_calm": {
+      "text": "Stay vigilant, friend. Watch the frequencies.",
+      "options": []
+    }
+  }
+}
