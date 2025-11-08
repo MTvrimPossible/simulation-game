@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST 06: AI Needs & Autonomy</title>
+    <style>
+        body { background-color: #1e1e1e; color: #d4d4d4; font-family: monospace; padding: 20px; }
+        #test-output { background: #252526; padding: 15px; border: 1px solid #3c3c3c; white-space: pre-wrap; }
+        .pass { color: #4caf50; }
+        .fail { color: #f44336; font-weight: bold; }
+        .info { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <h2>TEST 06: AI Needs System</h2>
+    <pre id="test-output">Initializing test environment...\n</pre>
+
+    <script>
+        const output = document.getElementById('test-output');
+        window.log = (message, type = '') => {
+            let styleClass = '';
+            if (type === 'pass') styleClass = 'pass';
+            else if (type === 'fail') styleClass = 'fail';
+            else if (type === 'info') styleClass = 'info';
+            const span = document.createElement('span');
+            span.className = styleClass;
+            span.textContent = `> ${message}\n`;
+            output.appendChild(span);
+        };
+        window.assert = (condition, message) => {
+            if (condition) {
+                window.log(`✔ PASS: ${message}`, 'pass');
+                return true;
+            } else {
+                window.log(`✘ FAIL: ${message}`, 'fail');
+                return false;
+            }
+        };
+    </script>
+
+    <script type="module">
+        import { World } from '../src/ecs.js';
+        import { AINeedsSystem } from '../src/systems/ai_needs.js';
+        import { NeedsComponent } from '../src/components/NeedsComponent.js';
+        import { PositionComponent } from '../src/components/PositionComponent.js';
+        // We don't need to import DestinationComponent to check if it exists by name
+
+        window.log("Starting AI Needs tests...", 'info');
+
+        // --- MOCK SYSTEM ---
+        // specialized version of the system just for this test.
+        // It lets us control what it "finds" in the world without building a complex world.
+        class MockAINeedsSystem extends AINeedsSystem {
+            constructor() {
+                super(null); // No real module manager needed for mock
+                this.mockFindResult = null;
+            }
+            findNearestSatisfier(world, originPos, tag) {
+                // Return our pre-configured mock result
+                return this.mockFindResult;
+            }
+        }
+
+        // --- SETUP ---
+        const world = new World();
+        const aiSystem = new MockAINeedsSystem();
+        world.registerSystem(aiSystem);
+
+        // Create our hungry test subject
+        const npc = world.createEntity();
+        world.addComponent(npc, 'PositionComponent', new PositionComponent(5, 5));
+        world.addComponent(npc, 'NeedsComponent', new NeedsComponent());
+
+        // =========================================
+        // TEST CASE 1: HAPPY PATH (Food exists)
+        // =========================================
+        window.log("\n--- TEST CASE 1: Happy Path (Food Found) ---", 'info');
+
+        // 1. Setup Condition: Make NPC very hungry (below threshold of 30)
+        const npcNeeds = world.getComponent(npc, 'NeedsComponent');
+        npcNeeds.Ea = 10; 
+
+        // 2. Setup Mock World State: Food is at (10, 10)
+        aiSystem.mockFindResult = { x: 10, y: 10 };
+
+        // 3. Run System
+        world.updateSystems(1);
+
+        // 4. Assertions
+        const dest = world.getComponent(npc, 'DestinationComponent');
+        window.assert(dest !== undefined, "NPC acquired a DestinationComponent.");
+        if (dest) {
+             window.assert(dest.x === 10 && dest.y === 10, `Destination is correct (Exp: 10,10 / Got: ${dest.x},${dest.y})`);
+        }
+
+        // =========================================
+        // TEST CASE 2: FAILURE PATH (No food exists)
+        // =========================================
+        window.log("\n--- TEST CASE 2: Despair Path (No Food Found) ---", 'info');
+
+        // 1. Reset NPC state
+        // We must manually remove the destination component to reset the test state properly
+        // (Since our ECS currently lacks a 'removeComponent', we'll just manually delete it from the internal pool for this test)
+        delete world.components['DestinationComponent'][npc]; 
+        
+        npcNeeds.Ea = 5; // Still very hungry
+
+        // 2. Setup Mock World State: NOTHING is found
+        aiSystem.mockFindResult = null;
+
+        // 3. Run System (Should NOT crash)
+        try {
+            world.updateSystems(1);
+            window.assert(true, "System updated without crashing when no solution found.");
+        } catch (e) {
+            window.assert(false, `System CRASHED: ${e.message}`);
+        }
+
+        // 4. Assertions
+        const dest2 = world.getComponent(npc, 'DestinationComponent');
+        window.assert(dest2 === undefined, "NPC did NOT acquire a destination (remains wandering).");
+
+        window.log("\nAI Needs tests complete.", 'info');
+    </script>
+</body>
+</html>
