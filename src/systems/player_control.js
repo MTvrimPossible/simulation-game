@@ -37,6 +37,41 @@ export class PlayerControlSystem extends System {
             case 'MOVE_RIGHT': newX++; break;
             case 'WAIT': /* Just pass time */ break;
             default: return; // Not a movement action
+
+                // ... inside update(), after calculating newX, newY ...
+
+        // 1. Check Map Tiles (Walls)
+        const map = world.getCurrentMap();
+        if (map[newY][newX] === '#') {
+             // Blocked by wall
+             return;
+        }
+
+        // 2. Check for Entity at that position
+        // (Naive O(N) search - fine for small prototypes)
+        let bumpedEntity = null;
+        for (const entityId of world.entities) {
+            if (entityId === playerID) continue; // Don't bump yourself
+            const otherPos = world.getComponent(entityId, 'PositionComponent');
+            if (otherPos && otherPos.x === newX && otherPos.y === newY) {
+                bumpedEntity = entityId;
+                break;
+            }
+        }
+
+        if (bumpedEntity) {
+            // WE HIT SOMETHING! Dispatch interaction event.
+            // console.log(`Bumped entity ${bumpedEntity}`);
+            window.dispatchEvent(new CustomEvent('OnPlayerInteract', {
+                detail: { player: playerID, target: bumpedEntity }
+            }));
+            // Don't move into them
+            return;
+        }
+
+        // 3. If nothing blocked us, MOVE.
+        pos.x = newX;
+        pos.y = newY;
         }
 
         // COLLISION CHECK (Naive)
