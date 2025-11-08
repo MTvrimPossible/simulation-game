@@ -60,6 +60,20 @@ async function init() {
     const worldGenerator = new WorldGenerator(moduleManager);
     const legacyManager = new LegacyManager();
 
+    // ... after const dialogueSystem = ...
+
+    // WIRE UP INTERACTION EVENT
+    window.addEventListener('OnPlayerInteract', (e) => {
+        const targetId = e.detail.target;
+        // Check if this target has a dialogue tree (we need a component for this!)
+        // Let's assume we add a 'DialogueComponent' to NPCs.
+        const dialogueComp = world.getComponent(targetId, 'DialogueComponent');
+
+        if (dialogueComp) {
+             dialogueSystem.startDialogue(dialogueComp.treeId, world, world.playerEntityId);
+        }
+    });
+
     // STEP 4: GENERATE WORLD & PLAYER
     console.log("[Main] Generating world...");
     const townData = worldGenerator.createTownMap();
