@@ -1,89 +1,21 @@
-/**
- * dialogue_system.js v2 (Supports Minigame Triggers)
- */
 export class DialogueSystem {
-    constructor(moduleManager) {
-        this.moduleManager = moduleManager;
-        this.uiContainer = document.getElementById('ui-textbox');
-        this.activeDialogue = null;
-        this.minigameRunner = null; // Will be injected later
+    constructor(mm) { this.mm = mm; this.ui = document.getElementById('ui-textbox'); this.runner = null; }
+    setRunner(r) { this.runner = r; }
+    startDialogue(tid, w, p) {
+        const t = this.mm.dialogue[tid]; if (!t) return;
+        this.active = t; this.w = w; this.p = p; this.show(t.root);
     }
-
-    // NEW: Allow injecting the runner after instantiation
-    setRunner(runner) {
-        this.minigameRunner = runner;
+    show(nid) {
+        const n = this.active.nodes[nid]; if (!n) { this.active = null; this.ui.innerHTML = '...'; return; }
+        let h = `<p><strong>NPC:</strong> ${n.text}</p>`;
+        if (n.options.length) {
+            h += '<ul>'; n.options.forEach((o, i) => { if (this.check(o.conditions)) h += `<li><a href="#" d-idx="${i}">[${i+1}] ${o.text}</a></li>`; }); h += '</ul>';
+        } else { h += '<p><a href="#" id="end">[End]</a></p>'; }
+        this.ui.innerHTML = h;
+        this.ui.querySelectorAll('a[d-idx]').forEach(l => l.onclick = e => { e.preventDefault(); this.sel(n.options[l.getAttribute('d-idx')]); });
+        const el = this.ui.querySelector('#end'); if (el) el.onclick = e => { e.preventDefault(); this.active = null; this.ui.innerHTML = '...'; };
     }
-
-    startDialogue(treeId, world, playerEntity) {
-        const tree = this.moduleManager.dialogue[treeId];
-        if (!tree) return;
-        this.activeDialogue = tree;
-        this.currentWorldRef = world;
-        this.currentPlayerRef = playerEntity;
-        this.showNode(tree.root || Object.keys(tree.nodes)[0]);
-    }
-
-    endDialogue() {
-        this.uiContainer.innerHTML = '...';
-        this.activeDialogue = null;
-    }
-
-    showNode(nodeId) {
-        if (!this.activeDialogue || !this.activeDialogue.nodes[nodeId]) {
-            this.endDialogue(); return;
-        }
-        const node = this.activeDialogue.nodes[nodeId];
-        let html = `<p><strong>NPC:</strong> ${node.text}</p>`;
-        if (node.options && node.options.length > 0) {
-            html += '<ul style="list-style: none; padding-left: 0;">';
-            node.options.forEach((option, index) => {
-                if (this.checkConditions(option.conditions)) {
-                    html += `<li><a href="#" data-opt-index="${index}" class="dialogue-option">[${index + 1}] ${option.text}</a></li>`;
-                }
-            });
-            html += '</ul>';
-        } else {
-            html += '<p><a href="#" id="end-dialogue-link">[End]</a></p>';
-        }
-        this.uiContainer.innerHTML = html;
-        this.uiContainer.querySelectorAll('.dialogue-option').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.selectOption(node.options[parseInt(e.target.getAttribute('data-opt-index'))]);
-            });
-        });
-        const endLink = this.uiContainer.querySelector('#end-dialogue-link');
-        if (endLink) endLink.addEventListener('click', (e) => { e.preventDefault(); this.endDialogue(); });
-    }
-
-    selectOption(optionData) {
-        if (optionData.effects) this.applyEffects(optionData.effects);
-        if (optionData.link) this.showNode(optionData.link);
-        else this.endDialogue();
-    }
-
-    checkConditions(conditions) {
-        if (!conditions) return true;
-        for (const c of conditions) {
-            if (c.startsWith('HasItem:')) {
-                const inv = this.currentWorldRef.getComponent(this.currentPlayerRef, 'InventoryComponent');
-                if (!inv || !inv.items.some(i => i.id === c.split(':')[1])) return false;
-            }
-        }
-        return true;
-    }
-
-    applyEffects(effects) {
-        effects.forEach(eff => {
-            // NEW: Minigame Trigger
-            if (eff.startsWith('TriggerMinigame:')) {
-                const gameId = eff.split(':')[1];
-                if (this.minigameRunner) {
-                    this.endDialogue(); // End dialogue before game starts
-                    this.minigameRunner.run(gameId);
-                }
-            }
-            // ... other effects ...
-        });
-    }
+    sel(o) { if (o.effects) this.apply(o.effects); if (o.link) this.show(o.link); else { this.active = null; this.ui.innerHTML = '...'; } }
+    check(c) { if (!c) return true; return c.every(cond => { if (cond.startsWith('HasItem:')) { const i = this.w.getComponent(this.p, 'InventoryComponent'); return i && i.items.some(x => x.id === cond.split(':')[1]); } return true; }); }
+    apply(e) { e.forEach(eff => { if (eff.startsWith('TriggerMinigame:')) { this.active = null; this.runner.run(eff.split(':')[1]); } }); }
 }
