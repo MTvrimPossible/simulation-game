@@ -12,9 +12,9 @@ import { World } from './src/ecs.js';
 import { Renderer } from './src/renderer.js';
 import { ModuleManager } from './src/module_manager.js';
 import { GameLoop } from './src/game_loop.js';
-import { PlayerControlSystem } from './src/systems/player_control.js';
 
 // Systems
+import { PlayerControlSystem } from './src/systems/player_control.js';
 import { TimeSystem } from './src/systems/time_system.js';
 import { AINeedsSystem } from './src/systems/ai_needs.js';
 import { LieIdleSystem } from './src/systems/lie_idle.js';
@@ -28,12 +28,14 @@ import { WorldGenerator } from './src/procgen/world_generator.js';
 import { DialogueSystem } from './src/dialogue_system.js';
 import { LegacyManager } from './src/legacy_manager.js';
 
-// Components (Required for manual entity creation in Step 4)
+// Components
 import { PositionComponent } from './src/components/PositionComponent.js';
 import { ASCIIRenderComponent } from './src/components/ASCIIRenderComponent.js';
 import { NeedsComponent } from './src/components/NeedsComponent.js';
 import { MicroplasticsComponent } from './src/components/MicroplasticsComponent.js';
-// Stub for Inventory if not yet created separately:
+import { DialogueComponent } from './src/components/DialogueComponent.js';
+
+// Stubs for components not yet fully implemented in their own files
 class InventoryComponent { constructor() { this.items = []; } }
 class ReputationComponent { constructor() { this.value = 0; } }
 
@@ -51,7 +53,8 @@ async function init() {
         await moduleManager.loadAllData();
     } catch (error) {
         console.error("FATAL: Could not load game data. Aborting start.");
-        alert("FATAL ERROR: Could not load game data. Check console.");
+        // Ensure the UI tells the user something went wrong
+        document.getElementById('ui-textbox').innerText = "FATAL ERROR: Could not load game data. Check console (F12).";
         return;
     }
 
@@ -60,15 +63,11 @@ async function init() {
     const worldGenerator = new WorldGenerator(moduleManager);
     const legacyManager = new LegacyManager();
 
-    // ... after const dialogueSystem = ...
-
-    // WIRE UP INTERACTION EVENT
+    // --- EVENT WIRING ---
+    // Wire up interaction event for bumping into things
     window.addEventListener('OnPlayerInteract', (e) => {
         const targetId = e.detail.target;
-        // Check if this target has a dialogue tree (we need a component for this!)
-        // Let's assume we add a 'DialogueComponent' to NPCs.
         const dialogueComp = world.getComponent(targetId, 'DialogueComponent');
-
         if (dialogueComp) {
              dialogueSystem.startDialogue(dialogueComp.treeId, world, world.playerEntityId);
         }
@@ -77,48 +76,38 @@ async function init() {
     // STEP 4: GENERATE WORLD & PLAYER
     console.log("[Main] Generating world...");
     const townData = worldGenerator.createTownMap();
-
-    // Attach map data to world so GameLoop and Renderer can find it
-    // (In a full ECS, this might be a 'MapComponent' on a global entity)
-    world.getCurrentMap = () => townData.mapData;
+    world.getCurrentMap = () => townData.mapData; // Attach map data to world
 
     // 4a. Populate Static World Entities (Buildings)
     townData.buildingSpawns.forEach(spawn => {
         const building = world.createEntity();
         world.addComponent(building, 'PositionComponent', new PositionComponent(spawn.x, spawn.y));
         world.addComponent(building, 'ASCIIRenderComponent', new ASCIIRenderComponent('B', '#555555'));
-        // In real implementation, we'd add a 'StructureComponent' with spawn.tags here
     });
 
-    // 4b. Create Player (Inlining LegacyManager.CreatePlayer for now)
+    // 4b. Create Player
     console.log("[Main] Spawning player...");
     const player = world.createEntity();
+    // Start player in a safe open spot based on our new open map generator (e.g., 15, 15)
     world.addComponent(player, 'PositionComponent', new PositionComponent(15, 15));
-    world.addComponent(player, 'ASCIIRenderComponent', new ASCIIRenderComponent('@', '#FFD700')); // Gold color for player
+    world.addComponent(player, 'ASCIIRenderComponent', new ASCIIRenderComponent('@', '#FFD700'));
     world.addComponent(player, 'NeedsComponent', new NeedsComponent());
     world.addComponent(player, 'MicroplasticsComponent', new MicroplasticsComponent(0));
     world.addComponent(player, 'InventoryComponent', new InventoryComponent());
     world.addComponent(player, 'ReputationComponent', new ReputationComponent());
 
-    // ... in init(), after spawning player ...
+    // Tag the player globally for easy retrieval by systems
+    world.playerEntityId = player;
 
-    // IMPORT THE COMPONENT AT THE TOP FIRST:
-    // import { DialogueComponent } from './src/components/DialogueComponent.js';
-
+    // 4c. Spawn Debug NPC (for testing interaction)
     console.log("[Main] Spawning Debug NPC...");
     const npc = world.createEntity();
     world.addComponent(npc, 'PositionComponent', new PositionComponent(18, 15)); // Near player
     world.addComponent(npc, 'ASCIIRenderComponent', new ASCIIRenderComponent('D', 'cyan'));
-    // Use the tree ID you created in data/dialogue.json
     world.addComponent(npc, 'DialogueComponent', new DialogueComponent('D_Debug'));
 
-    // Tag the player for easy retrieval by systems
-    world.playerEntityId = player;
-
-    // 4c. Helper for GameLoop to find what to render
+    // 4d. Render Helper
     world.getRenderableEntities = () => {
-        // Naive: get ALL entities with Position + Render.
-        // Optimization: Only get those on screen.
         const renderables = [];
         for (const entityId of world.entities) {
             const pos = world.getComponent(entityId, 'PositionComponent');
@@ -131,8 +120,7 @@ async function init() {
     };
 
     // STEP 5: REGISTER ALL ECS SYSTEMS
-    // Order matters slightly: Input/Time first, then Logic, then Output/Cleanup.
-    world.registerSystem(new PlayerControlSystem()); // <--- ADD THIS
+    world.registerSystem(new PlayerControlSystem());
     world.registerSystem(new TimeSystem());
     world.registerSystem(new AINeedsSystem(moduleManager));
     world.registerSystem(new LieIdleSystem());
@@ -146,7 +134,10 @@ async function init() {
 
     // STEP 7: START LOOP
     console.log("[Main] Initialization complete. Starting game loop.");
-    gameLoop.start(); document.getElementById('ui-textbox').innerText = "Simulation initialized. WASD/Arrows to move.";
+    gameLoop.start();
+
+    // Final UI update
+    document.getElementById('ui-textbox').innerText = "Simulation initialized. Use Arrow Keys to move. Bump into 'D' to talk.";
 }
 
 // --- ENTRY POINT ---
