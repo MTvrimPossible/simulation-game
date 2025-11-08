@@ -57,13 +57,48 @@ async function init() {
     const worldGenerator = new WorldGenerator(moduleManager);
     // const legacyManager = new LegacyManager(); // Unused for now
 
-    // --- EVENT WIRING ---
+// --- EVENT WIRING (UPGRADED) ---
     window.addEventListener('OnPlayerInteract', (e) => {
         const targetId = e.detail.target;
+        const player = world.playerEntityId;
+
+        // 1. Check for Dialogue (NPCs)
         const dialogueComp = world.getComponent(targetId, 'DialogueComponent');
         if (dialogueComp) {
-             dialogueSystem.startDialogue(dialogueComp.treeId, world, world.playerEntityId);
+             dialogueSystem.startDialogue(dialogueComp.treeId, world, player);
+             return;
         }
+
+        // 2. Check for Item (Pick up)
+        const itemComp = world.getComponent(targetId, 'ItemComponent');
+        if (itemComp) {
+            // A. Get Player Inventory
+            const inventory = world.getComponent(player, 'InventoryComponent');
+            if (inventory) {
+                // B. Add item data to inventory
+                // We store a copy of the data, not the entity itself usually,
+                // but for simplicity let's store the component data.
+                if (inventory.addItem({ id: itemComp.itemId, name: itemComp.name })) {
+                     // C. Remove item entity from world
+                     // We need a way to remove entities. Our World class might need an update for this.
+                     // For now, we'll just banish it to the void (remove its position).
+                     delete world.components.PositionComponent[targetId];
+                     // Optional: world.removeEntity(targetId) if implemented.
+
+                     console.log(`[Interaction] Picked up ${itemComp.name}`);
+                     document.getElementById('ui-textbox').innerText = `You picked up: ${itemComp.name}`;
+
+                     // Dispatch event for other systems (OwnershipSystem needs this!)
+                     window.dispatchEvent(new CustomEvent('OnPickupItem', {
+                         detail: { entityId: player, item: itemComp }
+                     }));
+                } else {
+                     document.getElementById('ui-textbox').innerText = "Inventory is full.";
+                }
+            }
+            return;
+        }
+    });
     });
 
     // --- WORLD GEN ---
