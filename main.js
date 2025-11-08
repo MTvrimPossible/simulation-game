@@ -100,6 +100,18 @@ async function init() {
     world.addComponent(player, 'InventoryComponent', new InventoryComponent());
     world.addComponent(player, 'ReputationComponent', new ReputationComponent());
 
+    // ... in init(), after spawning player ...
+
+    // IMPORT THE COMPONENT AT THE TOP FIRST:
+    // import { DialogueComponent } from './src/components/DialogueComponent.js';
+
+    console.log("[Main] Spawning Debug NPC...");
+    const npc = world.createEntity();
+    world.addComponent(npc, 'PositionComponent', new PositionComponent(18, 15)); // Near player
+    world.addComponent(npc, 'ASCIIRenderComponent', new ASCIIRenderComponent('D', 'cyan'));
+    // Use the tree ID you created in data/dialogue.json
+    world.addComponent(npc, 'DialogueComponent', new DialogueComponent('D_Debug'));
+
     // Tag the player for easy retrieval by systems
     world.playerEntityId = player;
 
