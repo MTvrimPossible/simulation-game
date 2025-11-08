@@ -1,6 +1,6 @@
 /**
  * main.js
- * THE INTEGRATOR - v2 DEBUG
+ * THE INTEGRATOR - v3 Inventory Ready
  */
 
 // --- 1. MODULE IMPORTS ---
@@ -29,11 +29,12 @@ import { PositionComponent } from './src/components/PositionComponent.js';
 import { ASCIIRenderComponent } from './src/components/ASCIIRenderComponent.js';
 import { NeedsComponent } from './src/components/NeedsComponent.js';
 import { MicroplasticsComponent } from './src/components/MicroplasticsComponent.js';
-// CRITICAL IMPORT:
 import { DialogueComponent } from './src/components/DialogueComponent.js';
+// --- NEW IMPORTS FOR THIS STEP ---
+import { InventoryComponent } from './src/components/InventoryComponent.js';
+import { ItemComponent } from './src/components/ItemComponent.js';
 
 // Stubs
-class InventoryComponent { constructor() { this.items = []; } }
 class ReputationComponent { constructor() { this.value = 0; } }
 
 // --- MAIN INITIALIZATION ---
@@ -56,23 +57,13 @@ async function init() {
     const worldGenerator = new WorldGenerator(moduleManager);
     // const legacyManager = new LegacyManager(); // Unused for now
 
-    // --- DEBUG EVENT WIRING ---
+    // --- EVENT WIRING ---
     window.addEventListener('OnPlayerInteract', (e) => {
-        // --- START DEBUG BLOCK ---
-        console.log("[Main] Event DETECTED:", e.detail);
-
         const targetId = e.detail.target;
         const dialogueComp = world.getComponent(targetId, 'DialogueComponent');
-
-        console.log(`[Main] Checking Entity ${targetId} for DialogueComponent... Result:`, dialogueComp);
-
         if (dialogueComp) {
-             console.log(`[Main] SUCCESS. Starting dialogue tree: '${dialogueComp.treeId}'`);
              dialogueSystem.startDialogue(dialogueComp.treeId, world, world.playerEntityId);
-        } else {
-             console.warn("[Main] FAILURE. Target has no DialogueComponent.");
         }
-        // --- END DEBUG BLOCK ---
     });
 
     // --- WORLD GEN ---
@@ -93,7 +84,7 @@ async function init() {
     world.addComponent(player, 'ASCIIRenderComponent', new ASCIIRenderComponent('@', '#FFD700'));
     world.addComponent(player, 'NeedsComponent', new NeedsComponent());
     world.addComponent(player, 'MicroplasticsComponent', new MicroplasticsComponent(0));
-    world.addComponent(player, 'InventoryComponent', new InventoryComponent());
+    world.addComponent(player, 'InventoryComponent', new InventoryComponent()); // Using REAL component
     world.addComponent(player, 'ReputationComponent', new ReputationComponent());
     world.playerEntityId = player;
 
@@ -103,6 +94,15 @@ async function init() {
     world.addComponent(npc, 'PositionComponent', new PositionComponent(18, 15));
     world.addComponent(npc, 'ASCIIRenderComponent', new ASCIIRenderComponent('D', 'cyan'));
     world.addComponent(npc, 'DialogueComponent', new DialogueComponent('D_Debug'));
+
+    // --- ITEM GEN (TEST ITEM) ---
+    console.log("[Main] Spawning Test Item...");
+    const waterItem = world.createEntity();
+    world.addComponent(waterItem, 'PositionComponent', new PositionComponent(16, 16));
+    world.addComponent(waterItem, 'ASCIIRenderComponent', new ASCIIRenderComponent('~', 'blue'));
+    // Use the ItemComponent to tag it
+    world.addComponent(waterItem, 'ItemComponent', new ItemComponent('item_001_water', 'Bottled Water'));
+
 
     // --- RENDER HELPER ---
     world.getRenderableEntities = () => {
