@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST 04: Game Loop (Turn-Based)</title>
+    <style>
+        body { background-color: #1e1e1e; color: #d4d4d4; font-family: monospace; padding: 20px; }
+        #test-output { background: #252526; padding: 15px; border: 1px solid #3c3c3c; white-space: pre-wrap; }
+        .pass { color: #4caf50; }
+        .fail { color: #f44336; font-weight: bold; }
+        .info { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <h2>TEST 04: Game Loop (Turn-Based Input)</h2>
+    <pre id="game-screen" style="display: none;"></pre>
+    <pre id="test-output">Initializing test environment...\n</pre>
+
+    <script>
+        const output = document.getElementById('test-output');
+        window.log = (message, type = '') => {
+            let styleClass = '';
+            if (type === 'pass') styleClass = 'pass';
+            else if (type === 'fail') styleClass = 'fail';
+            else if (type === 'info') styleClass = 'info';
+            const span = document.createElement('span');
+            span.className = styleClass;
+            span.textContent = `> ${message}\n`;
+            output.appendChild(span);
+        };
+        window.assert = (condition, message) => {
+            if (condition) {
+                window.log(`✔ PASS: ${message}`, 'pass');
+                return true;
+            } else {
+                window.log(`✘ FAIL: ${message}`, 'fail');
+                return false;
+            }
+        };
+        // Helper to wait in async tests
+        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    </script>
+
+    <script type="module">
+        import { GameLoop } from '../src/game_loop.js';
+
+        window.log("Starting GameLoop tests...", 'info');
+
+        // --- MOCKS ---
+        const mockRenderer = {
+            render: () => { /* Do nothing, just avoid crash */ }
+        };
+
+        const mockWorld = {
+            updateCounter: 0,
+            updateSystems: (turns) => {
+                mockWorld.updateCounter += turns;
+                // window.log(`World updated by ${turns} turn(s).`, 'info');
+            },
+            // Required by GameLoop.main() to avoid crash
+            getCurrentMap: () => [['.']],
+            getRenderableEntities: () => []
+        };
+
+        async function runTests() {
+            // 1. Instantiate Loop
+            const loop = new GameLoop(mockWorld, mockRenderer);
+
+            // 3. Start Loop
+            loop.start();
+            window.log("Loop started. Waiting 100ms (expecting NO updates)...", 'info');
+
+            // Wait for a few frames to pass
+            await wait(100);
+
+            // 4. Assert: NO updates should have happened yet (no input)
+            window.assert(mockWorld.updateCounter === 0, `World should NOT have updated yet. Counter: ${mockWorld.updateCounter}`);
+
+            // 5. Simulate Input
+            window.log("Simulating 'ArrowUp' keypress...", 'info');
+            const event = new KeyboardEvent('keydown', { key: 'ArrowUp' });
+            window.dispatchEvent(event);
+
+            // Wait for next frame(s) to process input
+            await wait(100);
+
+            // 6. Assert: ONE update should have happened
+            window.assert(mockWorld.updateCounter === 1, `World SHOULD have updated exactly once. Counter: ${mockWorld.updateCounter}`);
+
+            loop.stop();
+        }
+
+        runTests().then(() => {
+            window.log("\nGameLoop tests complete.", 'info');
+        });
+
+    </script>
+</body>
+</html>
