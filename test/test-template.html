@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Harness Template</title>
+    <style>
+        body { background-color: #1e1e1e; color: #d4d4d4; font-family: monospace; padding: 20px; }
+        #test-output { background: #252526; padding: 15px; border: 1px solid #3c3c3c; white-space: pre-wrap; }
+        .pass { color: #4caf50; }
+        .fail { color: #f44336; font-weight: bold; }
+        .info { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <h2>Module Test Harness</h2>
+    <pre id="test-output">Initializing test environment...\n</pre>
+
+    <script>
+        // --- Global Test Helpers ---
+        // These are attached to window so they can be used by any imported test script.
+
+        const output = document.getElementById('test-output');
+
+        window.log = (message, type = '') => {
+            const timestamp = new Date().toLocaleTimeString();
+            let styleClass = '';
+            if (type === 'pass') styleClass = 'pass';
+            else if (type === 'fail') styleClass = 'fail';
+            else if (type === 'info') styleClass = 'info';
+
+            const span = document.createElement('span');
+            span.className = styleClass;
+            span.textContent = `[${timestamp}] ${message}\n`;
+            output.appendChild(span);
+        };
+
+        window.assert = (condition, message) => {
+            if (condition) {
+                window.log(`✔ PASS: ${message}`, 'pass');
+                return true;
+            } else {
+                window.log(`✘ FAIL: ${message}`, 'fail');
+                return false;
+            }
+        };
+    </script>
+
+    <script type="module">
+        // Temporary placeholder to show it works
+        window.log("Test harness ready.", 'info');
+        window.assert(true, "Sanity check passed: Harness is active.");
+    </script>
+</body>
+</html>
