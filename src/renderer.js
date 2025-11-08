@@ -1,42 +1,18 @@
 export class Renderer {
-    constructor(targetPreId) {
-        this.display = document.getElementById(targetPreId);
-    }
-
-    render(mapData, renderables) {
+    constructor(id) { this.display = document.getElementById(id); }
+    render(map, ents) {
         if (!this.display) return;
-
-        // 1. Create a buffer of OBJECTS, not just strings, so we can hold color data
-        const height = mapData.length;
-        const width = mapData[0].length;
-        const buffer = Array(height).fill(null)
-            .map((_, y) => mapData[y].map(tile => ({ char: tile, color: null })));
-
-        // 2. Stamp entities onto the buffer
-        for (const entity of renderables) {
-            if (buffer[entity.y] && buffer[entity.y][entity.x]) {
-                buffer[entity.y][entity.x] = {
-                    char: entity.tile,
-                    color: entity.color || 'white'
-                };
+        const h = map.length, w = map[0].length;
+        const buf = Array(h).fill(null).map((_, y) => map[y].map(t => ({ c: t, col: null })));
+        for (const e of ents) { if (buf[e.y] && buf[e.y][e.x]) buf[e.y][e.x] = { c: e.tile, col: e.color || 'white' }; }
+        let html = '';
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const cell = buf[y][x];
+                html += cell.col ? `<span style="color: ${cell.col};">${cell.c}</span>` : cell.c;
             }
+            html += '\n';
         }
-
-        // 3. Convert buffer to HTML string
-        let outputHTML = '';
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const cell = buffer[y][x];
-                // Only add a <span> if it has a specific color, optimization for DOM
-                if (cell.color) {
-                    outputHTML += `<span style="color: ${cell.color};">${cell.char}</span>`;
-                } else {
-                    outputHTML += cell.char;
-                }
-            }
-            outputHTML += '\n';
-        }
-
-        this.display.innerHTML = outputHTML;
+        this.display.innerHTML = html;
     }
 }
