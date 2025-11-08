@@ -3,26 +3,20 @@
     "root": "start",
     "nodes": {
       "start": {
-        "text": "SYSTEM DIAGNOSTIC: [PASS]. Simulation integrity at 98%.",
+        "text": "I am the Pong Master. Care to wager your dignity?",
         "options": [
-          { "text": "Acknowledge.", "link": null }
+          { "text": "I accept your challenge. [Play Pong]", "link": null, "effects": ["TriggerMinigame:pong"] },
+          { "text": "I have no dignity left to lose.", "link": "sad" }
         ]
-      }
+      },
+      "sad": { "text": "Then you have already lost.", "options": [] }
     }
   },
   "D_Guest": {
     "root": "start",
     "nodes": {
-      "start": {
-        "text": "Do you hear it? The humming...",
-        "options": [
-          { "text": "Back away.", "link": "end" }
-        ]
-      },
-      "end": {
-        "text": "(Mutters to radiator)",
-        "options": []
-      }
+      "start": { "text": "The humming...", "options": [{ "text": "Bye.", "link": "end" }] },
+      "end": { "text": "...", "options": [] }
     }
   }
 }
