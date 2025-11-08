@@ -1,6 +1,6 @@
 /**
  * main.js
- * THE INTEGRATOR - v4 Pickup Ready
+ * THE INTEGRATOR - v5 UI Ready
  */
 
 // --- 1. MODULE IMPORTS ---
@@ -18,6 +18,8 @@ import { ContagionSystem } from './src/systems/contagion.js';
 import { OwnershipSystem } from './src/systems/ownership.js';
 import { MicroplasticsSystem } from './src/systems/entropy.js';
 import { ReputationSystem } from './src/systems/reputation.js';
+// NEW IMPORT:
+import { InventoryUISystem } from './src/systems/inventory_ui.js';
 
 // Managers & Generators
 import { WorldGenerator } from './src/procgen/world_generator.js';
@@ -55,33 +57,27 @@ async function init() {
     const dialogueSystem = new DialogueSystem(moduleManager);
     const worldGenerator = new WorldGenerator(moduleManager);
 
-    // --- EVENT WIRING (INTERACTION HUB) ---
+    // --- EVENT WIRING ---
     window.addEventListener('OnPlayerInteract', (e) => {
         const targetId = e.detail.target;
         const player = world.playerEntityId;
 
-        // 1. Check for Dialogue (NPCs)
+        // 1. Dialogue
         const dialogueComp = world.getComponent(targetId, 'DialogueComponent');
         if (dialogueComp) {
              dialogueSystem.startDialogue(dialogueComp.treeId, world, player);
              return;
         }
 
-        // 2. Check for Item (Pick up)
+        // 2. Item Pickup
         const itemComp = world.getComponent(targetId, 'ItemComponent');
         if (itemComp) {
             const inventory = world.getComponent(player, 'InventoryComponent');
             if (inventory && inventory.addItem({ id: itemComp.itemId, name: itemComp.name })) {
-                 // Banish item from physical world by removing its position
                  delete world.components.PositionComponent[targetId];
-
                  console.log(`[Interaction] Picked up ${itemComp.name}`);
                  document.getElementById('ui-textbox').innerText = `You picked up: ${itemComp.name}`;
-
-                 // Dispatch event for OwnershipSystem
-                 window.dispatchEvent(new CustomEvent('OnPickupItem', {
-                     detail: { entityId: player, item: itemComp }
-                 }));
+                 window.dispatchEvent(new CustomEvent('OnPickupItem', { detail: { entityId: player, item: itemComp } }));
             } else {
                  document.getElementById('ui-textbox').innerText = "Inventory is full.";
             }
@@ -109,13 +105,12 @@ async function init() {
     world.addComponent(player, 'ReputationComponent', new ReputationComponent());
     world.playerEntityId = player;
 
-    // --- NPC GEN ---
+    // --- NPC & ITEM GEN ---
     const npc = world.createEntity();
     world.addComponent(npc, 'PositionComponent', new PositionComponent(18, 15));
     world.addComponent(npc, 'ASCIIRenderComponent', new ASCIIRenderComponent('D', 'cyan'));
     world.addComponent(npc, 'DialogueComponent', new DialogueComponent('D_Debug'));
 
-    // --- ITEM GEN ---
     const waterItem = world.createEntity();
     world.addComponent(waterItem, 'PositionComponent', new PositionComponent(16, 16));
     world.addComponent(waterItem, 'ASCIIRenderComponent', new ASCIIRenderComponent('~', 'blue'));
@@ -136,6 +131,7 @@ async function init() {
 
     // --- REGISTER SYSTEMS ---
     world.registerSystem(new PlayerControlSystem());
+    world.registerSystem(new InventoryUISystem(world, renderer)); // <--- NEW SYSTEM REGISTERED HERE
     world.registerSystem(new TimeSystem());
     world.registerSystem(new AINeedsSystem(moduleManager));
     world.registerSystem(new LieIdleSystem());
@@ -148,7 +144,7 @@ async function init() {
     const gameLoop = new GameLoop(world, renderer);
     gameLoop.start();
 
-    document.getElementById('ui-textbox').innerText = "Simulation initialized. Bump 'D' to talk, '~' to pickup.";
+    document.getElementById('ui-textbox').innerText = "Simulation initialized. 'I' for Inventory.";
 }
 
 init();
