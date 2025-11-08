@@ -1,6 +1,6 @@
 /**
  * main.js
- * THE INTEGRATOR - v3 Inventory Ready
+ * THE INTEGRATOR - v4 Pickup Ready
  */
 
 // --- 1. MODULE IMPORTS ---
@@ -30,7 +30,6 @@ import { ASCIIRenderComponent } from './src/components/ASCIIRenderComponent.js';
 import { NeedsComponent } from './src/components/NeedsComponent.js';
 import { MicroplasticsComponent } from './src/components/MicroplasticsComponent.js';
 import { DialogueComponent } from './src/components/DialogueComponent.js';
-// --- NEW IMPORTS FOR THIS STEP ---
 import { InventoryComponent } from './src/components/InventoryComponent.js';
 import { ItemComponent } from './src/components/ItemComponent.js';
 
@@ -55,9 +54,8 @@ async function init() {
 
     const dialogueSystem = new DialogueSystem(moduleManager);
     const worldGenerator = new WorldGenerator(moduleManager);
-    // const legacyManager = new LegacyManager(); // Unused for now
 
-// --- EVENT WIRING (UPGRADED) ---
+    // --- EVENT WIRING (INTERACTION HUB) ---
     window.addEventListener('OnPlayerInteract', (e) => {
         const targetId = e.detail.target;
         const player = world.playerEntityId;
@@ -72,37 +70,26 @@ async function init() {
         // 2. Check for Item (Pick up)
         const itemComp = world.getComponent(targetId, 'ItemComponent');
         if (itemComp) {
-            // A. Get Player Inventory
             const inventory = world.getComponent(player, 'InventoryComponent');
-            if (inventory) {
-                // B. Add item data to inventory
-                // We store a copy of the data, not the entity itself usually,
-                // but for simplicity let's store the component data.
-                if (inventory.addItem({ id: itemComp.itemId, name: itemComp.name })) {
-                     // C. Remove item entity from world
-                     // We need a way to remove entities. Our World class might need an update for this.
-                     // For now, we'll just banish it to the void (remove its position).
-                     delete world.components.PositionComponent[targetId];
-                     // Optional: world.removeEntity(targetId) if implemented.
+            if (inventory && inventory.addItem({ id: itemComp.itemId, name: itemComp.name })) {
+                 // Banish item from physical world by removing its position
+                 delete world.components.PositionComponent[targetId];
 
-                     console.log(`[Interaction] Picked up ${itemComp.name}`);
-                     document.getElementById('ui-textbox').innerText = `You picked up: ${itemComp.name}`;
+                 console.log(`[Interaction] Picked up ${itemComp.name}`);
+                 document.getElementById('ui-textbox').innerText = `You picked up: ${itemComp.name}`;
 
-                     // Dispatch event for other systems (OwnershipSystem needs this!)
-                     window.dispatchEvent(new CustomEvent('OnPickupItem', {
-                         detail: { entityId: player, item: itemComp }
-                     }));
-                } else {
-                     document.getElementById('ui-textbox').innerText = "Inventory is full.";
-                }
+                 // Dispatch event for OwnershipSystem
+                 window.dispatchEvent(new CustomEvent('OnPickupItem', {
+                     detail: { entityId: player, item: itemComp }
+                 }));
+            } else {
+                 document.getElementById('ui-textbox').innerText = "Inventory is full.";
             }
             return;
         }
     });
-    });
 
     // --- WORLD GEN ---
-    console.log("[Main] Generating world...");
     const townData = worldGenerator.createTownMap();
     world.getCurrentMap = () => townData.mapData;
 
@@ -113,31 +100,26 @@ async function init() {
     });
 
     // --- PLAYER GEN ---
-    console.log("[Main] Spawning player...");
     const player = world.createEntity();
     world.addComponent(player, 'PositionComponent', new PositionComponent(15, 15));
     world.addComponent(player, 'ASCIIRenderComponent', new ASCIIRenderComponent('@', '#FFD700'));
     world.addComponent(player, 'NeedsComponent', new NeedsComponent());
     world.addComponent(player, 'MicroplasticsComponent', new MicroplasticsComponent(0));
-    world.addComponent(player, 'InventoryComponent', new InventoryComponent()); // Using REAL component
+    world.addComponent(player, 'InventoryComponent', new InventoryComponent());
     world.addComponent(player, 'ReputationComponent', new ReputationComponent());
     world.playerEntityId = player;
 
-    // --- NPC GEN (DEBUG NPC) ---
-    console.log("[Main] Spawning Debug NPC...");
+    // --- NPC GEN ---
     const npc = world.createEntity();
     world.addComponent(npc, 'PositionComponent', new PositionComponent(18, 15));
     world.addComponent(npc, 'ASCIIRenderComponent', new ASCIIRenderComponent('D', 'cyan'));
     world.addComponent(npc, 'DialogueComponent', new DialogueComponent('D_Debug'));
 
-    // --- ITEM GEN (TEST ITEM) ---
-    console.log("[Main] Spawning Test Item...");
+    // --- ITEM GEN ---
     const waterItem = world.createEntity();
     world.addComponent(waterItem, 'PositionComponent', new PositionComponent(16, 16));
     world.addComponent(waterItem, 'ASCIIRenderComponent', new ASCIIRenderComponent('~', 'blue'));
-    // Use the ItemComponent to tag it
     world.addComponent(waterItem, 'ItemComponent', new ItemComponent('item_001_water', 'Bottled Water'));
-
 
     // --- RENDER HELPER ---
     world.getRenderableEntities = () => {
@@ -164,10 +146,9 @@ async function init() {
 
     // --- START ---
     const gameLoop = new GameLoop(world, renderer);
-    console.log("[Main] Starting loop.");
     gameLoop.start();
 
-    document.getElementById('ui-textbox').innerText = "Simulation initialized. Bump into 'D' to talk.";
+    document.getElementById('ui-textbox').innerText = "Simulation initialized. Bump 'D' to talk, '~' to pickup.";
 }
 
 init();
