@@ -75,9 +75,6 @@ async function init() {
 
     // --- WORLD GEN ---
     const townData = worldGenerator.createTownMap();
-    world.getCurrentMap = () => townData.mapData; // Note: This is NOT saved! Must be re-generated or saved separately.
-    // ACTUALLY, we MUST save the map data if we want to load it back exactly as it was.
-    // Let's attach it to the world object directly for serialization.
     world.mapData = townData.mapData;
     // Update World.serialize to include it, OR just rely on it being attached to 'world'.
     // (Our simple JSON.stringify(world) might miss it if it's not explicitly added to the return object in serialize())
